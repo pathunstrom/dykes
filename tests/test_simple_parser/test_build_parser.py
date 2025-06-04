@@ -92,3 +92,37 @@ def test_count_action():
 
     assert action.help == "Verbosity of script. Apply up to 3."
     assert type(action) is argparse._CountAction
+
+
+def test_store_true_type_alias():
+
+    @dataclass
+    class Application:
+        """
+        Application description
+        """
+        foo: simple_parser.StoreTrue
+
+    parser = simple_parser.build_parser(Application)
+
+    action = [action for action in parser._actions if action.dest == "foo"][0]
+
+    assert isinstance(action, argparse._StoreTrueAction)
+    assert action.default is False
+
+
+def test_store_false_type_alias():
+
+    @dataclass
+    class Application:
+        """
+        Application description
+        """
+        foo: simple_parser.StoreFalse
+
+    parser = simple_parser.build_parser(Application)
+
+    action = [action for action in parser._actions if action.dest == "foo"][0]
+
+    assert isinstance(action, argparse._StoreFalseAction)
+    assert action.default is True

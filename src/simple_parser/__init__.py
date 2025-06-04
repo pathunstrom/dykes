@@ -61,7 +61,7 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
     for name, cls in hints.items():
         action = None
         flags = None
-        configuration = {
+        configuration: dict[str, typing.Any] = {
             "help": None
         }
         if (meta := getattr(cls, "__metadata__", None)) is not None:
@@ -83,9 +83,13 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         if flags is None:
             flags = f"-{name[0]}", f"--{name.replace('_', '-')}"
         if cls is bool:
-            parser.add_argument(*flags, dest=name, action=Action.STORE_TRUE, **configuration)
+            parser.add_argument(*flags, dest=name, action=Action.STORE_TRUE, **configuration)  # type:ignore
         elif action is Action.COUNT:
-            parser.add_argument(*flags, dest=name, action=action, **configuration)
+            parser.add_argument(*flags, dest=name, action=action, **configuration)  # type:ignore
+        elif action is Action.STORE_TRUE:
+            parser.add_argument(*flags, dest=name, action=Action.STORE_TRUE, **configuration)  # type:ignore
+        elif action is Action.STORE_FALSE:
+            parser.add_argument(*flags, dest=name, action=Action.STORE_FALSE, **configuration)  # type:ignore
         else:
-            parser.add_argument(name, type=cls, **configuration)
+            parser.add_argument(name, type=cls, **configuration)  # type:ignore
     return parser
