@@ -8,6 +8,8 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  release:
+    types: ["published"]
 
 jobs:
   build:
@@ -35,3 +37,58 @@ jobs:
     - name: Test with pytest
       run: |
         poetry run pytest
+    - name: Build Dist
+      run: poetry build
+    - name: Store distribution files
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-distributions
+        path: dist/
+
+  publish-py-pi-test:
+    name: Publish dykes to Test PyPI
+    if: ${{ github.event.action == published }}
+    needs:
+      - build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/dykes
+
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+      - name: Publish dykes to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-py-pi:
+    name: Publish dykes to PyPI
+    if: ${{ github.event.action == published && !github.event.release.prerelease }}
+    needs:
+    - publish-py-pi-test
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dykes
+
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download the dists.
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
