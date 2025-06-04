@@ -54,16 +54,25 @@ def parse_args[ArgsType](
     return parameter_definition(**vars(parsed))
 
 
+@dataclasses.dataclass
+class Field:
+    name: str
+    value: typing.Any
+
+
 def build_parser(application_definition: type) -> argparse.ArgumentParser:
     description = getdoc(application_definition)
     parser = argparse.ArgumentParser(description=description)
     hints = get_type_hints(application_definition, include_extras=True)
+    fields = _get_fields(application_definition)
     for name, cls in hints.items():
-        action = None
-        flags = None
+        action: Action | None = None
+        flags: typing.Sequence[str] | None = None
         configuration: dict[str, typing.Any] = {
-            "help": None
+            "help": None,
+            "default": fields[name].value
         }
+
         if (meta := getattr(cls, "__metadata__", None)) is not None:
             for datum in meta:
                 if isinstance(datum, Action) and action is not None:
@@ -82,14 +91,36 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
                     configuration["help"] = datum
         if flags is None:
             flags = f"-{name[0]}", f"--{name.replace('_', '-')}"
-        if cls is bool:
+        if cls is bool or action is Action.STORE_TRUE:
+            del configuration["default"]
             parser.add_argument(*flags, dest=name, action=Action.STORE_TRUE, **configuration)  # type:ignore
         elif action is Action.COUNT:
-            parser.add_argument(*flags, dest=name, action=action, default=0, **configuration)  # type:ignore
-        elif action is Action.STORE_TRUE:
-            parser.add_argument(*flags, dest=name, action=Action.STORE_TRUE, **configuration)  # type:ignore
+            default = configuration.pop("default") or 0
+            parser.add_argument(*flags, dest=name, action=action, default=default, **configuration)  # type:ignore
         elif action is Action.STORE_FALSE:
+            del configuration["default"]
             parser.add_argument(*flags, dest=name, action=Action.STORE_FALSE, **configuration)  # type:ignore
         else:
             parser.add_argument(name, type=cls, **configuration)  # type:ignore
     return parser
+
+
+@typing.runtime_checkable
+class _NamedTupleProtocol(typing.Protocol):
+    _fields: tuple[str]
+    _field_defaults: dict[str, typing.Any]
+
+
+def _get_fields(cls: type) -> dict["str", Field]:
+    fields = {}
+    if dataclasses.is_dataclass(cls):
+        fields = {
+            field.name: Field(field.name, field.default if field.default is not dataclasses.MISSING else None)
+            for field
+            in dataclasses.fields(cls)
+        }
+
+        return fields
+    elif isinstance(cls, _NamedTupleProtocol):
+        fields = {field: Field(field, cls._field_defaults.get(field)) for field in cls._fields}
+    return fields

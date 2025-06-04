@@ -126,3 +126,27 @@ def test_store_false_type_alias():
 
     assert isinstance(action, argparse._StoreFalseAction)
     assert action.default is True
+
+
+def test_defaults_with_dataclass__positional():
+    import decimal
+
+    @dataclass
+    class StopMe:
+        foo: decimal.Decimal = decimal.Decimal("0.1")
+
+    import dataclasses
+    parser = simple_parser.build_parser(StopMe)
+    action = [action for action in parser._actions if action.dest == "foo"][0]
+    assert action.type == decimal.Decimal
+    assert action.default == decimal.Decimal("0.1")
+
+
+def test_defaults_dataclass__different_count():
+    @dataclass
+    class StopMe:
+        foo: simple_parser.Count = 2
+
+    parser = simple_parser.build_parser(StopMe)
+    action = [action for action in parser._actions if action.dest == "foo"][0]
+    assert action.default == 2
