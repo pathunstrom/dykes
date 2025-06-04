@@ -85,7 +85,7 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         if cls is bool:
             parser.add_argument(*flags, dest=name, action=Action.STORE_TRUE, **configuration)  # type:ignore
         elif action is Action.COUNT:
-            parser.add_argument(*flags, dest=name, action=action, **configuration)  # type:ignore
+            parser.add_argument(*flags, dest=name, action=action, default=0, **configuration)  # type:ignore
         elif action is Action.STORE_TRUE:
             parser.add_argument(*flags, dest=name, action=Action.STORE_TRUE, **configuration)  # type:ignore
         elif action is Action.STORE_FALSE:
