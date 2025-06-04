@@ -70,7 +70,7 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         flags: typing.Sequence[str] | None = None
         configuration: dict[str, typing.Any] = {
             "help": None,
-            "default": fields[name].value
+            "default": fields[name].value,
         }
 
         if (meta := getattr(cls, "__metadata__", None)) is not None:
@@ -93,13 +93,19 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
             flags = f"-{name[0]}", f"--{name.replace('_', '-')}"
         if cls is bool or action is Action.STORE_TRUE:
             del configuration["default"]
-            parser.add_argument(*flags, dest=name, action=Action.STORE_TRUE, **configuration)  # type:ignore
+            parser.add_argument(
+                *flags, dest=name, action=Action.STORE_TRUE, **configuration
+            )  # type:ignore
         elif action is Action.COUNT:
             default = configuration.pop("default") or 0
-            parser.add_argument(*flags, dest=name, action=action, default=default, **configuration)  # type:ignore
+            parser.add_argument(
+                *flags, dest=name, action=action, default=default, **configuration
+            )  # type:ignore
         elif action is Action.STORE_FALSE:
             del configuration["default"]
-            parser.add_argument(*flags, dest=name, action=Action.STORE_FALSE, **configuration)  # type:ignore
+            parser.add_argument(
+                *flags, dest=name, action=Action.STORE_FALSE, **configuration
+            )  # type:ignore
         else:
             if configuration["default"] is not None:
                 raise ValueError("Positional arguments cannot have defaults.")
@@ -117,12 +123,16 @@ def _get_fields(cls: type) -> dict["str", Field]:
     fields = {}
     if dataclasses.is_dataclass(cls):
         fields = {
-            field.name: Field(field.name, field.default if field.default is not dataclasses.MISSING else None)
-            for field
-            in dataclasses.fields(cls)
+            field.name: Field(
+                field.name,
+                field.default if field.default is not dataclasses.MISSING else None,
+            )
+            for field in dataclasses.fields(cls)
         }
 
         return fields
     elif isinstance(cls, _NamedTupleProtocol):
-        fields = {field: Field(field, cls._field_defaults.get(field)) for field in cls._fields}
+        fields = {
+            field: Field(field, cls._field_defaults.get(field)) for field in cls._fields
+        }
     return fields
