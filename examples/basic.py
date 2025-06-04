@@ -2,7 +2,7 @@ import dataclasses
 import pathlib
 import typing
 
-import simple_parser
+import dykes
 
 
 @dataclasses.dataclass
@@ -11,14 +11,14 @@ class WordCounterArgs:
 
     path: typing.Annotated[pathlib.Path, "The path to the file to word count."]
     dry_run: bool
-    verbosity: typing.Annotated[simple_parser.Count, "Verbosity of script. Provide up to 3 times."]
+    verbosity: typing.Annotated[dykes.Count, "Verbosity of script. Provide up to 3 times."]
 
 
 if __name__ == "__main__":
-    args = simple_parser.parse_args(WordCounterArgs)
+    args = dykes.parse_args(WordCounterArgs)
     print(args)
 
-#
+# The equivalent code without dykes
 #
 # import argparse
 # import dataclasses
@@ -43,3 +43,4 @@ if __name__ == "__main__":
 #     parser.add_argument("-d", "--dry-run", action="store_true", dest="dry_run")
 #     name_space = parser.parse_args()
 #     args = WordCounterArgs(**vars(name_space))
+#     print(args)

@@ -1,5 +1,5 @@
 [project]
-name = "simple-parser"
+name = "dykes"
 version = "0.1.0"
 description = "A tiny declarative Argparse wrapper."
 authors = [

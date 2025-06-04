@@ -5,7 +5,7 @@ from typing import NamedTuple, Annotated
 import pytest
 from pytest import mark
 
-import simple_parser
+import dykes
 
 
 @mark.parametrize(
@@ -26,7 +26,7 @@ def test_description_from_docstring(docstring):
     Application.__doc__ = docstring
     # Can't use an f-string as a docstring, so we're faking it.
 
-    result_parser = simple_parser.build_parser(Application)
+    result_parser = dykes.build_parser(Application)
     assert docstring == result_parser.description
 
 
@@ -41,7 +41,7 @@ def test_typed_actions():
         foo: str
         place: pathlib.Path
 
-    result_parser = simple_parser.build_parser(Application)
+    result_parser = dykes.build_parser(Application)
 
     for action in result_parser._actions:
         assert action.dest in ("help", "foo", "place")
@@ -59,7 +59,7 @@ def test_with_store_true_implicit():
         """
         jessica: bool
 
-    result_parser = simple_parser.build_parser(Application)
+    result_parser = dykes.build_parser(Application)
 
     for action in result_parser._actions:
         assert action.dest in ("help", "jessica")
@@ -75,7 +75,7 @@ def test_annotated_with_help():
         """Application description"""
         param: Annotated[int, "This is the help text."]
 
-    parser = simple_parser.build_parser(Application)
+    parser = dykes.build_parser(Application)
 
     action = [action for action in parser._actions if action.dest == "param"][0]
     assert action.help == "This is the help text."
@@ -86,9 +86,9 @@ def test_count_action():
     @dataclass
     class Application:
         """Application description"""
-        verbosity: Annotated[simple_parser.Count, "Verbosity of script. Apply up to 3."]
+        verbosity: Annotated[dykes.Count, "Verbosity of script. Apply up to 3."]
 
-    parser = simple_parser.build_parser(Application)
+    parser = dykes.build_parser(Application)
     action = [action for action in parser._actions if action.dest == "verbosity"][0]
 
     assert action.help == "Verbosity of script. Apply up to 3."
@@ -102,9 +102,9 @@ def test_store_true_type_alias():
         """
         Application description
         """
-        foo: simple_parser.StoreTrue
+        foo: dykes.StoreTrue
 
-    parser = simple_parser.build_parser(Application)
+    parser = dykes.build_parser(Application)
 
     action = [action for action in parser._actions if action.dest == "foo"][0]
 
@@ -119,9 +119,9 @@ def test_store_false_type_alias():
         """
         Application description
         """
-        foo: simple_parser.StoreFalse
+        foo: dykes.StoreFalse
 
-    parser = simple_parser.build_parser(Application)
+    parser = dykes.build_parser(Application)
 
     action = [action for action in parser._actions if action.dest == "foo"][0]
 
@@ -132,9 +132,9 @@ def test_store_false_type_alias():
 def test_defaults_dataclass__different_count():
     @dataclass
     class StopMe:
-        foo: simple_parser.Count = 2
+        foo: dykes.Count = 2
 
-    parser = simple_parser.build_parser(StopMe)
+    parser = dykes.build_parser(StopMe)
     action = [action for action in parser._actions if action.dest == "foo"][0]
     assert action.default == 2
 
@@ -144,5 +144,5 @@ def test_positional_parameter_with_default_raises():
     class Application:
         foo: str = "blue"
     with pytest.raises(ValueError) as err_info:
-        parser = simple_parser.build_parser(Application)
+        parser = dykes.build_parser(Application)
     assert str(err_info.value) == "Positional arguments cannot have defaults."
