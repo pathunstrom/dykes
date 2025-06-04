@@ -2,6 +2,7 @@ import argparse
 from dataclasses import dataclass
 from typing import NamedTuple, Annotated
 
+import pytest
 from pytest import mark
 
 import simple_parser
@@ -128,20 +129,6 @@ def test_store_false_type_alias():
     assert action.default is True
 
 
-def test_defaults_with_dataclass__positional():
-    import decimal
-
-    @dataclass
-    class StopMe:
-        foo: decimal.Decimal = decimal.Decimal("0.1")
-
-    import dataclasses
-    parser = simple_parser.build_parser(StopMe)
-    action = [action for action in parser._actions if action.dest == "foo"][0]
-    assert action.type == decimal.Decimal
-    assert action.default == decimal.Decimal("0.1")
-
-
 def test_defaults_dataclass__different_count():
     @dataclass
     class StopMe:
@@ -150,3 +137,12 @@ def test_defaults_dataclass__different_count():
     parser = simple_parser.build_parser(StopMe)
     action = [action for action in parser._actions if action.dest == "foo"][0]
     assert action.default == 2
+
+
+def test_positional_parameter_with_default_raises():
+    @dataclass
+    class Application:
+        foo: str = "blue"
+    with pytest.raises(ValueError) as err_info:
+        parser = simple_parser.build_parser(Application)
+    assert str(err_info.value) == "Positional arguments cannot have defaults."

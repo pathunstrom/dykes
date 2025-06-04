@@ -101,6 +101,8 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
             del configuration["default"]
             parser.add_argument(*flags, dest=name, action=Action.STORE_FALSE, **configuration)  # type:ignore
         else:
+            if configuration["default"] is not None:
+                raise ValueError("Positional arguments cannot have defaults.")
             parser.add_argument(name, type=cls, **configuration)  # type:ignore
     return parser
 
