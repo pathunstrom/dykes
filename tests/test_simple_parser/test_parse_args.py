@@ -1,4 +1,5 @@
 import dataclasses
+import pathlib
 from typing import NamedTuple
 
 import pytest
@@ -31,5 +32,45 @@ def test_positional_parameter_with_default_raises():
         ruby: str = "red"
 
     with pytest.raises(ValueError) as err_info:
-        parser = dykes.build_parser(Application)
+        parser = dykes.parse_args(Application)
     assert str(err_info.value) == "Positional arguments cannot have defaults."
+
+
+@pytest.mark.parametrize(
+    "inputs, expected",
+    (
+        (["foo.md"], [pathlib.Path("foo.md")]),
+        (["foo.md", "bar.txt"], [pathlib.Path("foo.md"), pathlib.Path("bar.txt")])
+    )
+)
+def test_nargs_positional_implicit(inputs, expected):
+    from pathlib import Path
+
+    @dataclasses.dataclass
+    class Application:
+        paths: list[Path]
+
+    args = dykes.parse_args(Application, args=inputs)
+    assert args.paths == expected
+
+
+def test_nargs_positional_implicit_no_param_fails():
+    from pathlib import Path
+
+    @dataclasses.dataclass
+    class Application:
+        paths: list[Path]
+
+    with pytest.raises(SystemExit):
+        args = dykes.parse_args(Application, args=[])
+
+
+def test_list_with_multiple_types_fails():
+    @dataclasses.dataclass
+    class Application:
+        paths: list[str, float]
+
+    with pytest.raises(ValueError) as ex_info:
+        args = dykes.parse_args(Application)
+
+    assert str(ex_info.value) == "dykes does not support lists with multiple type values. Convert list[str, float] to list[str] or list[float]"

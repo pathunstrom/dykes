@@ -4,7 +4,6 @@ import typing
 from enum import StrEnum, auto
 from inspect import getdoc
 from sys import argv
-from typing import get_type_hints
 
 
 @dataclasses.dataclass
@@ -63,9 +62,11 @@ class Field:
 def build_parser(application_definition: type) -> argparse.ArgumentParser:
     description = getdoc(application_definition)
     parser = argparse.ArgumentParser(description=description)
-    hints = get_type_hints(application_definition, include_extras=True)
+    hints = typing.get_type_hints(application_definition, include_extras=True)
     fields = _get_fields(application_definition)
+
     for name, cls in hints.items():
+        origin = get_origin(cls)
         action: Action | None = None
         flags: typing.Sequence[str] | None = None
         configuration: dict[str, typing.Any] = {
@@ -106,11 +107,53 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
             parser.add_argument(
                 *flags, dest=name, action=Action.STORE_FALSE, **configuration
             )  # type:ignore
+        elif origin is list:
+            type_args = typing.get_args(cls)
+            if len(type_args) > 1:
+                change_to = " or ".join(f"list[{t.__name__}]" for t in type_args)
+                raise ValueError(
+                    f"dykes does not support lists with multiple type values. Convert {cls} to {change_to}"
+                )
+            elif len(type_args) == 0:
+                cls = str
+            else:
+                cls = type_args[0]
+
+            parser.add_argument(name, type=cls, nargs="+")
         else:
             if configuration["default"] is not None:
                 raise ValueError("Positional arguments cannot have defaults.")
             parser.add_argument(name, type=cls, **configuration)  # type:ignore
     return parser
+
+
+@typing.runtime_checkable
+class _HasOrigin(typing.Protocol):
+    @property
+    def __origin__(self) -> type | None:
+        return None
+
+
+def get_origin(t: type) -> type:
+    """
+    Get true type from a hint.
+
+    A version of typing.get_origin that exposed Annotated types to their root
+    and also returns the input for un-subscripted types.
+    """
+    result = typing.get_origin(t)
+    if result is None:
+        return t
+    elif result is typing.Annotated:
+        if isinstance(t, _HasOrigin) and isinstance(
+            t.__origin__, type
+        ):  # Make mypy happy.
+            return get_origin(t.__origin__)
+        else:
+            raise ValueError(
+                "Annotated without a type or annotations. Please subscript Annotated."
+            )
+    return result
 
 
 @typing.runtime_checkable
