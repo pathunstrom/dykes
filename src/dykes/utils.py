@@ -14,7 +14,9 @@ def get_origin(t: type) -> type:
     if result is None:
         return t
     elif result is typing.Annotated:
-        if isinstance(t, internal.HasOrigin) and isinstance(t.__origin__, (type, typing.GenericAlias)):  # Make mypy happy.
+        if isinstance(t, internal.HasOrigin) and isinstance(
+            t.__origin__, (type, typing.GenericAlias)
+        ):  # Make mypy happy.
             return get_origin(t.__origin__)
         else:
             raise ValueError(
@@ -44,7 +46,9 @@ def get_field_type[T](cls: type[T] | list[type[T]]) -> type[T]:
         return cls
 
 
-def get_meta_args[FieldType](cls: type[FieldType], parameter_options: internal.ParameterOptions) -> internal.ParameterOptions[FieldType]:
+def get_meta_args[FieldType](
+    cls: type[FieldType], parameter_options: internal.ParameterOptions
+) -> internal.ParameterOptions[FieldType]:
     if (meta := getattr(cls, "__metadata__", None)) is not None:
         for datum in meta:
             if is_instance_unique(datum, options.Action, parameter_options):
@@ -67,11 +71,15 @@ type_map = {
 }
 
 
-def is_instance_unique[T: (str, options.Action, options.NArgs, options.Flags)](value: typing.Any, check_type: type[T], parameter_options: internal.ParameterOptions) -> typing.TypeGuard[T]:
+def is_instance_unique[T: (str, options.Action, options.NArgs, options.Flags)](
+    value: typing.Any, check_type: type[T], parameter_options: internal.ParameterOptions
+) -> typing.TypeGuard[T]:
     if not isinstance(value, check_type):
         return False
 
     if getattr(parameter_options, type_map[check_type]) != internal.UNSET:
-        raise ValueError(f"Found multiple {check_type.__name__} in Annotated. Please use only one {check_type.__name__}")
+        raise ValueError(
+            f"Found multiple {check_type.__name__} in Annotated. Please use only one {check_type.__name__}"
+        )
 
     return True

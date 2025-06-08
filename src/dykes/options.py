@@ -3,6 +3,7 @@ Argument Parser Options
 
 Provided for public API use.
 """
+
 import dataclasses
 import typing
 from enum import StrEnum, auto
@@ -49,4 +50,4 @@ class Flags:
         self.value = list(args)
 
     def __hash__(self):
-        return hash(f"Flags[{",".join(self.value)}]")
+        return hash(f"Flags[{','.join(self.value)}]")

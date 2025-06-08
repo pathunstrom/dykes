@@ -42,7 +42,11 @@ class ParameterOptions[T]:
     nargs: int | typing.Literal["?", "+", "*"] | _Unset = UNSET
 
     def as_dict(self) -> dict[str, typing.Any]:
-        output = {key: value for key, value in dataclasses.asdict(self).items() if value is not UNSET}
+        output = {
+            key: value
+            for key, value in dataclasses.asdict(self).items()
+            if value is not UNSET
+        }
         return output
 
 

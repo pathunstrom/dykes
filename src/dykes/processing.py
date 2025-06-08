@@ -3,6 +3,7 @@ The dykes plumbing module.
 
 This is all the things used internally to turn your definitions into something useful.
 """
+
 import argparse
 import dataclasses
 import typing
@@ -12,7 +13,11 @@ from sys import argv
 from dykes import options, internal, utils
 
 NO_TYPE = options.Action.COUNT, options.Action.STORE_FALSE, options.Action.STORE_TRUE
-MUST_BE_FLAG = options.Action.COUNT, options.Action.STORE_TRUE, options.Action.STORE_FALSE
+MUST_BE_FLAG = (
+    options.Action.COUNT,
+    options.Action.STORE_TRUE,
+    options.Action.STORE_FALSE,
+)
 
 
 def parse_args[ArgsType](
@@ -57,7 +62,7 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         parameter_options: internal.ParameterOptions = internal.ParameterOptions(
             dest=dest,
             type=utils.get_field_type(cls),
-            default=fields[dest].value if fields[dest].value else internal.UNSET
+            default=fields[dest].value if fields[dest].value else internal.UNSET,
         )
 
         parameter_options = utils.get_meta_args(cls, parameter_options)
@@ -73,18 +78,20 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
             parameter_options.type = internal.UNSET
 
         store_flag_unset = (
-                parameter_options.action is options.Action.STORE
-                and parameter_options.flags is internal.UNSET
+            parameter_options.action is options.Action.STORE
+            and parameter_options.flags is internal.UNSET
         )
         # If explicit Store action, we assume it's a flag.
         must_be_flag_unset = (
-                parameter_options.action in MUST_BE_FLAG and not parameter_options.flags
+            parameter_options.action in MUST_BE_FLAG and not parameter_options.flags
         )
         if store_flag_unset or must_be_flag_unset:
             parameter_options.flags = [f"-{dest[0]}", f"--{dest.replace('_', '-')}"]
 
         if parameter_options.action is options.Action.COUNT:
-            parameter_options.default = parameter_options.default if parameter_options.default else 0
+            parameter_options.default = (
+                parameter_options.default if parameter_options.default else 0
+            )
 
         if origin is list and parameter_options.nargs is internal.UNSET:
             parameter_options.nargs = "+"
@@ -93,7 +100,9 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         default_set = parameter_options.default is not internal.UNSET
         nargs_not_default_friendly = parameter_options.nargs not in ("?", "*")
         if default_set and flag_unset and nargs_not_default_friendly:
-            raise ValueError("Positional arguments cannot have defaults without NumberOfArguments '?' or '*'.")
+            raise ValueError(
+                "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+            )
         arguments = parameter_options.as_dict()
         dest = arguments["dest"]
         flags = arguments.pop("flags", None)
@@ -117,16 +126,14 @@ def _get_fields(cls: type) -> dict["str", internal.Field]:
     fields = {}
     if dataclasses.is_dataclass(cls):
         fields = {
-            field.name: internal.Field(
-                field.name,
-                _get_default(field)
-            )
+            field.name: internal.Field(field.name, _get_default(field))
             for field in dataclasses.fields(cls)
         }
 
         return fields
     elif isinstance(cls, internal.NamedTupleProtocol):
         fields = {
-            field: internal.Field(field, cls._field_defaults.get(field)) for field in cls._fields
+            field: internal.Field(field, cls._field_defaults.get(field))
+            for field in cls._fields
         }
     return fields
