@@ -15,7 +15,8 @@ def get_origin(t: type) -> type:
         return t
     elif result is typing.Annotated:
         if isinstance(t, internal.HasOrigin) and isinstance(
-            t.__origin__, (type, typing.GenericAlias)  # type:ignore
+            t.__origin__,
+            (type, typing.GenericAlias),  # type:ignore
         ):  # Make mypy happy.
             return get_origin(t.__origin__)
         else:

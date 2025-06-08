@@ -131,7 +131,9 @@ def _get_fields(cls: type) -> dict["str", internal.Field]:
     fields = {}
     if dataclasses.is_dataclass(cls):
         fields = {
-            field.name: internal.Field(field.name, _get_default(typing.cast(_Field, field)))
+            field.name: internal.Field(
+                field.name, _get_default(typing.cast(_Field, field))
+            )
             for field in dataclasses.fields(cls)
         }
 
