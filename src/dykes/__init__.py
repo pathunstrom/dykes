@@ -52,11 +52,43 @@ def parse_args[ArgsType](
     parsed = parser.parse_args(args)
     return parameter_definition(**vars(parsed))
 
+NO_TYPE = Action.COUNT, Action.STORE_FALSE, Action.STORE_TRUE
+MUST_BE_FLAG = Action.COUNT, Action.STORE_TRUE, Action.STORE_FALSE
 
 @dataclasses.dataclass
 class Field:
     name: str
     value: typing.Any
+
+
+class _Unset:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is not None:
+            cls._instance = super().__new__()
+        return cls._instance
+
+    def __bool__(self):
+        return False
+
+
+UNSET = _Unset()
+
+
+@dataclasses.dataclass
+class ParameterOptions[T]:
+    dest: str | _Unset
+    type: typing.Type[T] | typing.Callable[[], T] | UNSET
+    flags: list[str] | _Unset = UNSET
+    help: str | UNSET = UNSET
+    action: Action | _Unset = UNSET
+    default: T | _Unset = UNSET
+    nargs: int | typing.Literal["?", "+", "*"] | _Unset = UNSET
+
+    def as_dict(self) -> dict[str, typing.Any]:
+        output = {key: value for key, value in dataclasses.asdict(self).items() if value is not UNSET}
+        return output
 
 
 def build_parser(application_definition: type) -> argparse.ArgumentParser:
@@ -65,66 +97,89 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
     hints = typing.get_type_hints(application_definition, include_extras=True)
     fields = _get_fields(application_definition)
 
-    for name, cls in hints.items():
+    for dest, cls in hints.items():
         origin = get_origin(cls)
-        action: Action | None = None
-        flags: typing.Sequence[str] | None = None
-        configuration: dict[str, typing.Any] = {
-            "help": None,
-            "default": fields[name].value,
-        }
+        options: ParameterOptions = ParameterOptions(
+            dest=dest,
+            type=get_field_type(cls),
+            default=fields[dest].value if fields[dest].value else UNSET
+        )
 
-        if (meta := getattr(cls, "__metadata__", None)) is not None:
-            for datum in meta:
-                if isinstance(datum, Action) and action is not None:
-                    raise ValueError(
-                        "Multiple actions in annotations. Please use only one Action."
-                    )
-                elif isinstance(datum, Action):
-                    action = datum
-                elif isinstance(datum, str) and configuration["help"] is not None:
-                    raise (
-                        ValueError(
-                            "Multiple bare strings in annotation. Please use only one bare string in Annotation."
-                        )
-                    )
-                elif isinstance(datum, str):
-                    configuration["help"] = datum
-        if flags is None:
-            flags = f"-{name[0]}", f"--{name.replace('_', '-')}"
-        if cls is bool or action is Action.STORE_TRUE:
-            del configuration["default"]
-            parser.add_argument(
-                *flags, dest=name, action=Action.STORE_TRUE, **configuration
-            )  # type:ignore
-        elif action is Action.COUNT:
-            default = configuration.pop("default") or 0
-            parser.add_argument(
-                *flags, dest=name, action=action, default=default, **configuration
-            )  # type:ignore
-        elif action is Action.STORE_FALSE:
-            del configuration["default"]
-            parser.add_argument(
-                *flags, dest=name, action=Action.STORE_FALSE, **configuration
-            )  # type:ignore
-        elif origin is list:
-            type_args = typing.get_args(cls)
-            if len(type_args) > 1:
-                change_to = " or ".join(f"list[{t.__name__}]" for t in type_args)
-                raise ValueError(
-                    f"dykes does not support lists with multiple type values. Convert {cls} to {change_to}"
-                )
-            elif len(type_args) == 0:
-                cls = str
-            else:
-                cls = type_args[0]
+        options = get_meta_args(cls, options)
 
-            parser.add_argument(name, type=cls, nargs="+")
-        else:
-            if configuration["default"] is not None:
-                raise ValueError("Positional arguments cannot have defaults.")
-            parser.add_argument(name, type=cls, **configuration)  # type:ignore
+        if options.action is UNSET:
+            if options.type is bool:
+                if options.default is True:
+                    options.action = Action.STORE_FALSE
+                elif options.default in (False, UNSET):
+                    options.action = Action.STORE_TRUE
+
+        if options.action in NO_TYPE:
+            options.type = UNSET
+
+        if options.action in MUST_BE_FLAG and not options.flags:
+            options.flags = [f"-{dest[0]}", f"--{dest.replace("_", "-")}"]
+
+        if options.action is Action.COUNT:
+            options.default = options.default if options.default else 0
+
+        if origin is list and options.nargs is UNSET:
+            options.nargs = "+"
+
+        if options.flags is UNSET and options.default is not UNSET:
+            raise ValueError("Positional arguments cannot have defaults.")
+        arguments = options.as_dict()
+        dest = arguments["dest"]
+        flags = arguments.pop("flags", None)
+        name_or_flags = flags if flags else [dest]
+        if not flags:
+            arguments.pop("dest")
+        parser.add_argument(*name_or_flags, **arguments)
     return parser
+
+
+type_map = {
+    Action: "action",
+    str: "help",
+}
+
+
+def is_instance_unique[T: (str, Action)](value: typing.Any, check_type: type[T], options: ParameterOptions) -> typing.TypeGuard[T]:
+    if not isinstance(value, check_type):
+        return False
+
+    if getattr(options, type_map[check_type]) != UNSET:
+        raise ValueError(f"Found multiple {check_type.__name__} in Annotated. Please use only one {check_type.__name__}")
+
+    return True
+
+
+def get_meta_args[FieldType](cls: type[FieldType], options: ParameterOptions) -> ParameterOptions[FieldType]:
+    if (meta := getattr(cls, "__metadata__", None)) is not None:
+        for datum in meta:
+            if is_instance_unique(datum, Action, options):
+                options.action = datum
+            elif is_instance_unique(datum, str, options):
+                options.help = datum
+
+    return options
+
+
+def get_field_type[T](cls: type[T] | list[type[T]]) -> type[T]:
+    origin = get_origin(cls)
+    if origin is list:
+        type_args = typing.get_args(cls)
+        if len(type_args) > 1:
+            change_to = " or ".join(f"list[{t.__name__}]" for t in typing.get_args(cls))
+            raise ValueError(
+                f"dykes does not support lists with multiple type values. Convert {cls} to {change_to}"
+            )
+        elif len(type_args) == 0:
+            return str
+        else:
+            return type_args[0]
+    else:
+        return cls
 
 
 @typing.runtime_checkable
