@@ -8,8 +8,8 @@ class _Unset:
     _instance = None
 
     def __new__(cls):
-        if cls._instance is not None:
-            cls._instance = super().__new__()
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def __bool__(self):
@@ -36,7 +36,7 @@ class ParameterOptions[T]:
     dest: str | _Unset
     type: typing.Type[T] | typing.Callable[[], T] | UNSET
     flags: list[str] | _Unset = UNSET
-    help: str | UNSET = UNSET
+    help: str | _Unset = UNSET
     action: options.Action | _Unset = UNSET
     default: T | _Unset = UNSET
     nargs: int | typing.Literal["?", "+", "*"] | _Unset = UNSET

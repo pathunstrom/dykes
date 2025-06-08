@@ -81,8 +81,11 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         if origin is list and parameter_options.nargs is internal.UNSET:
             parameter_options.nargs = "+"
 
-        if parameter_options.flags is internal.UNSET and parameter_options.default is not internal.UNSET:
-            raise ValueError("Positional arguments cannot have defaults.")
+        flag_unset = parameter_options.flags is internal.UNSET
+        default_set = parameter_options.default is not internal.UNSET
+        nargs_not_default_friendly = parameter_options.nargs not in ("?", "*")
+        if default_set and flag_unset and nargs_not_default_friendly:
+            raise ValueError("Positional arguments cannot have defaults without NumberOfArguments '?' or '*'.")
         arguments = parameter_options.as_dict()
         dest = arguments["dest"]
         flags = arguments.pop("flags", None)
@@ -93,13 +96,22 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
     return parser
 
 
+def _get_default(data_class_field: dataclasses.field):
+    if data_class_field.default is not dataclasses.MISSING:
+        return data_class_field.default
+    elif data_class_field.default_factory is not dataclasses.MISSING:
+        return data_class_field.default_factory()
+    else:
+        return internal.UNSET
+
+
 def _get_fields(cls: type) -> dict["str", internal.Field]:
     fields = {}
     if dataclasses.is_dataclass(cls):
         fields = {
             field.name: internal.Field(
                 field.name,
-                field.default if field.default is not dataclasses.MISSING else None,
+                _get_default(field)
             )
             for field in dataclasses.fields(cls)
         }

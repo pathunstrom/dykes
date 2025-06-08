@@ -3,6 +3,7 @@ Argument Parser Options
 
 Provided for public API use.
 """
+import dataclasses
 import typing
 from enum import StrEnum, auto
 
@@ -34,3 +35,18 @@ class Action(StrEnum):
 Count = typing.Annotated[int, Action.COUNT]
 StoreTrue = typing.Annotated[bool, Action.STORE_TRUE]
 StoreFalse = typing.Annotated[bool, Action.STORE_FALSE]
+
+
+@dataclasses.dataclass(frozen=True)
+class NumberOfArguments:
+    value: int | typing.Literal["*", "+", "?"]
+
+
+class Flags:
+    value: list[str]
+
+    def __init__(self, *args: str):
+        self.value = list(args)
+
+    def __hash__(self):
+        return hash(f"Flags[{",".join(self.value)}]")

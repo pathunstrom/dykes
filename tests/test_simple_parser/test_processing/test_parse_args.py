@@ -1,6 +1,6 @@
 import dataclasses
 import pathlib
-from typing import NamedTuple
+from typing import NamedTuple, Literal, Annotated
 
 import pytest
 
@@ -33,7 +33,7 @@ def test_positional_parameter_with_default_raises():
 
     with pytest.raises(ValueError) as err_info:
         parser = dykes.parse_args(Application)
-    assert str(err_info.value) == "Positional arguments cannot have defaults."
+    assert str(err_info.value) == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
 
 
 @pytest.mark.parametrize(
@@ -74,3 +74,29 @@ def test_list_with_multiple_types_fails():
         args = dykes.parse_args(Application)
 
     assert str(ex_info.value) == "dykes does not support lists with multiple type values. Convert list[str, float] to list[str] or list[float]"
+
+
+def test_positional_parameter_with_default_proper_nargs_optional():
+
+    @dataclasses.dataclass
+    class Application:
+        foo: Annotated[list[str], dykes.options.NumberOfArguments("?")] = "blue"
+
+    app = dykes.parse_args(Application, args=[])
+    assert app.foo == "blue"
+
+    app = dykes.parse_args(Application, args=["red"])
+    assert app.foo == "red"
+
+
+def test_positional_parameter_with_default_proper_nargs_zero_or_many():
+
+    @dataclasses.dataclass
+    class Application:
+        foo: Annotated[list[str], dykes.options.NumberOfArguments("*")] = dataclasses.field(default_factory=lambda: ["blue"])
+
+    app = dykes.parse_args(Application, args=[])
+    assert app.foo == ["blue"]
+
+    app = dykes.parse_args(Application, args=["red"])
+    assert app.foo == ["red"]

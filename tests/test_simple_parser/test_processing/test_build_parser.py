@@ -1,4 +1,5 @@
 import argparse
+import typing
 from dataclasses import dataclass
 from typing import NamedTuple, Annotated
 
@@ -145,4 +146,4 @@ def test_positional_parameter_with_default_raises():
         foo: str = "blue"
     with pytest.raises(ValueError) as err_info:
         parser = dykes.build_parser(Application)
-    assert str(err_info.value) == "Positional arguments cannot have defaults."
+    assert str(err_info.value) == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."

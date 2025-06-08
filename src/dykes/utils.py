@@ -14,9 +14,7 @@ def get_origin(t: type) -> type:
     if result is None:
         return t
     elif result is typing.Annotated:
-        if isinstance(t, internal.HasOrigin) and isinstance(
-            t.__origin__, type
-        ):  # Make mypy happy.
+        if isinstance(t, internal.HasOrigin) and isinstance(t.__origin__, (type, typing.GenericAlias)):  # Make mypy happy.
             return get_origin(t.__origin__)
         else:
             raise ValueError(
@@ -28,8 +26,12 @@ def get_origin(t: type) -> type:
 def get_field_type[T](cls: type[T] | list[type[T]]) -> type[T]:
     origin = get_origin(cls)
     if origin is list:
-        type_args = typing.get_args(cls)
+        if type(cls) is typing._AnnotatedAlias:
+            type_args = typing.get_args(typing.get_args(cls)[0])
+        else:
+            type_args = typing.get_args(cls)
         if len(type_args) > 1:
+            print(origin, typing.get_args(cls), type(cls))
             change_to = " or ".join(f"list[{t.__name__}]" for t in typing.get_args(cls))
             raise ValueError(
                 f"dykes does not support lists with multiple type values. Convert {cls} to {change_to}"
@@ -49,17 +51,23 @@ def get_meta_args[FieldType](cls: type[FieldType], parameter_options: internal.P
                 parameter_options.action = datum
             elif is_instance_unique(datum, str, parameter_options):
                 parameter_options.help = datum
+            elif is_instance_unique(datum, options.NumberOfArguments, parameter_options):
+                parameter_options.nargs = datum.value
+            elif is_instance_unique(datum, options.Flags, parameter_options):
+                parameter_options.flags = datum.value
 
     return parameter_options
 
 
 type_map = {
     options.Action: "action",
+    options.NumberOfArguments: "nargs",
+    options.Flags: "flags",
     str: "help",
 }
 
 
-def is_instance_unique[T: (str, options.Action)](value: typing.Any, check_type: type[T], parameter_options: internal.ParameterOptions) -> typing.TypeGuard[T]:
+def is_instance_unique[T: (str, options.Action, options.NumberOfArguments, options.Flags)](value: typing.Any, check_type: type[T], parameter_options: internal.ParameterOptions) -> typing.TypeGuard[T]:
     if not isinstance(value, check_type):
         return False
 
