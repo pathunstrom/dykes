@@ -51,7 +51,7 @@ def get_meta_args[FieldType](cls: type[FieldType], parameter_options: internal.P
                 parameter_options.action = datum
             elif is_instance_unique(datum, str, parameter_options):
                 parameter_options.help = datum
-            elif is_instance_unique(datum, options.NumberOfArguments, parameter_options):
+            elif is_instance_unique(datum, options.NArgs, parameter_options):
                 parameter_options.nargs = datum.value
             elif is_instance_unique(datum, options.Flags, parameter_options):
                 parameter_options.flags = datum.value
@@ -61,13 +61,13 @@ def get_meta_args[FieldType](cls: type[FieldType], parameter_options: internal.P
 
 type_map = {
     options.Action: "action",
-    options.NumberOfArguments: "nargs",
+    options.NArgs: "nargs",
     options.Flags: "flags",
     str: "help",
 }
 
 
-def is_instance_unique[T: (str, options.Action, options.NumberOfArguments, options.Flags)](value: typing.Any, check_type: type[T], parameter_options: internal.ParameterOptions) -> typing.TypeGuard[T]:
+def is_instance_unique[T: (str, options.Action, options.NArgs, options.Flags)](value: typing.Any, check_type: type[T], parameter_options: internal.ParameterOptions) -> typing.TypeGuard[T]:
     if not isinstance(value, check_type):
         return False
 

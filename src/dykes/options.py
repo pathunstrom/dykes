@@ -38,7 +38,7 @@ StoreFalse = typing.Annotated[bool, Action.STORE_FALSE]
 
 
 @dataclasses.dataclass(frozen=True)
-class NumberOfArguments:
+class NArgs:
     value: int | typing.Literal["*", "+", "?"]
 
 

@@ -1,6 +1,6 @@
 import dataclasses
 import pathlib
-from typing import NamedTuple, Literal, Annotated
+from typing import NamedTuple, Annotated
 
 import pytest
 
@@ -80,7 +80,7 @@ def test_positional_parameter_with_default_proper_nargs_optional():
 
     @dataclasses.dataclass
     class Application:
-        foo: Annotated[list[str], dykes.options.NumberOfArguments("?")] = "blue"
+        foo: Annotated[list[str], dykes.options.NArgs("?")] = "blue"
 
     app = dykes.parse_args(Application, args=[])
     assert app.foo == "blue"
@@ -93,7 +93,7 @@ def test_positional_parameter_with_default_proper_nargs_zero_or_many():
 
     @dataclasses.dataclass
     class Application:
-        foo: Annotated[list[str], dykes.options.NumberOfArguments("*")] = dataclasses.field(default_factory=lambda: ["blue"])
+        foo: Annotated[list[str], dykes.options.NArgs("*")] = dataclasses.field(default_factory=lambda: ["blue"])
 
     app = dykes.parse_args(Application, args=[])
     assert app.foo == ["blue"]
