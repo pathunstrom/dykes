@@ -72,8 +72,16 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         if parameter_options.action in NO_TYPE:
             parameter_options.type = internal.UNSET
 
-        if parameter_options.action in MUST_BE_FLAG and not parameter_options.flags:
-            parameter_options.flags = [f"-{dest[0]}", f"--{dest.replace("_", "-")}"]
+        store_flag_unset = (
+                parameter_options.action is options.Action.STORE
+                and parameter_options.flags is internal.UNSET
+        )
+        # If explicit Store action, we assume it's a flag.
+        must_be_flag_unset = (
+                parameter_options.action in MUST_BE_FLAG and not parameter_options.flags
+        )
+        if store_flag_unset or must_be_flag_unset:
+            parameter_options.flags = [f"-{dest[0]}", f"--{dest.replace('_', '-')}"]
 
         if parameter_options.action is options.Action.COUNT:
             parameter_options.default = parameter_options.default if parameter_options.default else 0

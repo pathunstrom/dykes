@@ -100,3 +100,15 @@ def test_positional_parameter_with_default_proper_nargs_zero_or_many():
 
     app = dykes.parse_args(Application, args=["red"])
     assert app.foo == ["red"]
+
+
+def test_option_explicit_store_makes_flag():
+    @dataclasses.dataclass
+    class Application:
+        foo: Annotated[str, dykes.options.Action.STORE]
+
+    app = dykes.parse_args(Application, args=[])
+    assert app.foo is None
+
+    app = dykes.parse_args(Application, args=["-f", "test"])
+    assert app.foo == "test"
