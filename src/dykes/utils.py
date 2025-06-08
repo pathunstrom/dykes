@@ -15,7 +15,7 @@ def get_origin(t: type) -> type:
         return t
     elif result is typing.Annotated:
         if isinstance(t, internal.HasOrigin) and isinstance(
-            t.__origin__, (type, typing.GenericAlias)
+            t.__origin__, (type, typing.GenericAlias)  # type:ignore
         ):  # Make mypy happy.
             return get_origin(t.__origin__)
         else:
@@ -25,10 +25,10 @@ def get_origin(t: type) -> type:
     return result
 
 
-def get_field_type[T](cls: type[T] | list[type[T]]) -> type[T]:
+def get_field_type(cls: type) -> type:
     origin = get_origin(cls)
     if origin is list:
-        if type(cls) is typing._AnnotatedAlias:
+        if type(cls) is typing._AnnotatedAlias:  # type:ignore
             type_args = typing.get_args(typing.get_args(cls)[0])
         else:
             type_args = typing.get_args(cls)

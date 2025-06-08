@@ -113,7 +113,12 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
     return parser
 
 
-def _get_default(data_class_field: dataclasses.field):
+class _Field(typing.Protocol):
+    default: typing.Any
+    default_factory: typing.Callable[[], typing.Any]
+
+
+def _get_default(data_class_field: _Field):
     if data_class_field.default is not dataclasses.MISSING:
         return data_class_field.default
     elif data_class_field.default_factory is not dataclasses.MISSING:
@@ -126,7 +131,7 @@ def _get_fields(cls: type) -> dict["str", internal.Field]:
     fields = {}
     if dataclasses.is_dataclass(cls):
         fields = {
-            field.name: internal.Field(field.name, _get_default(field))
+            field.name: internal.Field(field.name, _get_default(typing.cast(_Field, field)))
             for field in dataclasses.fields(cls)
         }
 

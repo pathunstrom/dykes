@@ -34,7 +34,7 @@ class NamedTupleProtocol(typing.Protocol):
 @dataclasses.dataclass
 class ParameterOptions[T]:
     dest: str | _Unset
-    type: typing.Type[T] | typing.Callable[[], T] | UNSET
+    type: typing.Type[T] | typing.Callable[[], T] | _Unset
     flags: list[str] | _Unset = UNSET
     help: str | _Unset = UNSET
     action: options.Action | _Unset = UNSET
