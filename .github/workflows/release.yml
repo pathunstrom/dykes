@@ -30,9 +30,11 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install poetry
         poetry install
-    - name: Lint with flake8
+    - name: Lint with ruff
       run: |
         poetry run ruff check src
+    - name: Check types
+      run: poetry run mypy src
     - name: Test with pytest
       run: |
         poetry run pytest
