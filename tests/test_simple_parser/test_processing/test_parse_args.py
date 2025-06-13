@@ -80,7 +80,7 @@ def test_positional_parameter_with_default_proper_nargs_optional():
 
     @dataclasses.dataclass
     class Application:
-        foo: Annotated[list[str], dykes.options.NArgs("?")] = "blue"
+        foo: Annotated[str, dykes.options.NArgs("?")] = "blue"
 
     app = dykes.parse_args(Application, args=[])
     assert app.foo == "blue"
