@@ -47,6 +47,10 @@ If you would like to vendor it, take the `src/dykes/__init__.py` and include it 
 * Parameter help strings: provide a bare string via Annotated
 * Application description via your `dataclass` or `NamedTuple`'s docstring.
 * `snake_case` field names converted to `--kebab-case` long options.
+* Number of Args
+  * Implicitly with `arg: list[T]`
+  * explicitly via `arg: Annotated[list[T], dykes.NArgs("+")]`
+  * Explicit can use positional arguments with a default factory via `dataclasses.field` as well.
 
 ## What works but is underwhelming
 
@@ -62,7 +66,6 @@ If you would like to vendor it, take the `src/dykes/__init__.py` and include it 
   * Version
 * More Options
   * Defining custom flags (currently derived from names)
-  * nargs
   * const
   * choices
   * required
