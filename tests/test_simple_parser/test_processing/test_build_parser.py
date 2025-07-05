@@ -1,5 +1,4 @@
 import argparse
-import typing
 from dataclasses import dataclass
 from typing import NamedTuple, Annotated
 
@@ -15,11 +14,10 @@ import dykes
         "This is a test",
         "An extra test with longer time.",
         "This one has a newline.\nSee, this is another line."
-        "Does it suppress multiple new lines?\n\nMore text here."
-    ]
+        "Does it suppress multiple new lines?\n\nMore text here.",
+    ],
 )
 def test_description_from_docstring(docstring):
-
     @dataclass
     class Application:
         foo: str
@@ -39,6 +37,7 @@ def test_typed_actions():
         """
         A sample application with two simple positional parameters.
         """
+
         foo: str
         place: pathlib.Path
 
@@ -47,17 +46,17 @@ def test_typed_actions():
     for action in result_parser._actions:
         assert action.dest in ("help", "foo", "place")
         if action.dest == "foo":
-            assert action.type == str
+            assert action.type is str
         elif action.dest == "place":
             assert action.type == pathlib.Path
 
 
 def test_with_store_true_implicit():
-
     class Application(NamedTuple):
         """
         A sample NamedTuple Application Definition
         """
+
         jessica: bool
 
     result_parser = dykes.build_parser(Application)
@@ -70,10 +69,10 @@ def test_with_store_true_implicit():
 
 
 def test_annotated_with_help():
-
     @dataclass
     class Application:
         """Application description"""
+
         param: Annotated[int, "This is the help text."]
 
     parser = dykes.build_parser(Application)
@@ -83,10 +82,10 @@ def test_annotated_with_help():
 
 
 def test_count_action():
-
     @dataclass
     class Application:
         """Application description"""
+
         verbosity: Annotated[dykes.Count, "Verbosity of script. Apply up to 3."]
 
     parser = dykes.build_parser(Application)
@@ -97,12 +96,12 @@ def test_count_action():
 
 
 def test_store_true_type_alias():
-
     @dataclass
     class Application:
         """
         Application description
         """
+
         foo: dykes.StoreTrue
 
     parser = dykes.build_parser(Application)
@@ -114,12 +113,12 @@ def test_store_true_type_alias():
 
 
 def test_store_false_type_alias():
-
     @dataclass
     class Application:
         """
         Application description
         """
+
         foo: dykes.StoreFalse
 
     parser = dykes.build_parser(Application)
@@ -144,6 +143,10 @@ def test_positional_parameter_with_default_raises():
     @dataclass
     class Application:
         foo: str = "blue"
+
     with pytest.raises(ValueError) as err_info:
-        parser = dykes.build_parser(Application)
-    assert str(err_info.value) == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+        parser = dykes.build_parser(Application)  # noqa: F841
+    assert (
+        str(err_info.value)
+        == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+    )
