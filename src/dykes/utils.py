@@ -1,6 +1,6 @@
 import typing
 
-from dykes import internal, options
+from . import internal, options
 
 
 def get_origin(t: type) -> type:
