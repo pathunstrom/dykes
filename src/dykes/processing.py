@@ -137,10 +137,13 @@ def _get_fields(cls: type) -> dict["str", internal.Field]:
             for field in dataclasses.fields(cls)
         }
 
-        return fields
     elif isinstance(cls, internal.NamedTupleProtocol):
         fields = {
-            field: internal.Field(field, cls._field_defaults.get(field))
+            field: internal.Field(field, cls._field_defaults.get(field, internal.UNSET))
             for field in cls._fields
         }
+    else:
+        raise ValueError(
+            f"{cls.__name__} is not a supported class type. Please use a dataclass or NamedTuple."
+        )
     return fields
