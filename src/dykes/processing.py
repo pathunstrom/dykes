@@ -10,7 +10,7 @@ import typing
 from inspect import getdoc
 from sys import argv
 
-from dykes import options, internal, utils
+from . import options, internal, utils
 
 NO_TYPE = options.Action.COUNT, options.Action.STORE_FALSE, options.Action.STORE_TRUE
 MUST_BE_FLAG = (

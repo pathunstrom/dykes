@@ -33,8 +33,8 @@ And the output looks like:
 
 ## Inlining `dykes`
 
-While `dykes` is packaged to be used with pip, it's operational code is in a single file.
-If you would like to vendor it, take the `src/dykes/__init__.py` and include it in your own project.
+While `dykes` is packaged to be used with pip, it is self-contained and uses relative imports for its own code.
+If you would like to vendor it, take the files under `src/dykes/` and include it in your own project.
 
 ## What works
 
@@ -49,7 +49,7 @@ If you would like to vendor it, take the `src/dykes/__init__.py` and include it 
 * `snake_case` field names converted to `--kebab-case` long options.
 * Number of Args
   * Implicitly with `arg: list[T]`
-  * explicitly via `arg: Annotated[list[T], dykes.NArgs("+")]`
+  * explicitly via `arg: Annotated[list[T], dykes.options.NArgs("+")]`
   * Explicit can use positional arguments with a default factory via `dataclasses.field` as well.
 
 ## What works but is underwhelming
