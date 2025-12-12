@@ -3,9 +3,9 @@ import typing
 from . import internal, options
 
 
-def get_origin(t: type) -> type:
+def get_origin_type(t: type) -> type:
     """
-    Get true type from a hint.
+    Get true type from a hint. (That is, the actual type of the annotated variable.)
 
     A version of typing.get_origin that exposed Annotated types to their root
     and also returns the input for un-subscripted types.
@@ -18,7 +18,7 @@ def get_origin(t: type) -> type:
             t.__origin__,
             (type, typing.GenericAlias),  # type:ignore
         ):  # Make mypy happy.
-            return get_origin(t.__origin__)
+            return get_origin_type(t.__origin__)
         else:
             raise ValueError(
                 "Annotated without a type or annotations. Please subscript Annotated."
@@ -26,8 +26,11 @@ def get_origin(t: type) -> type:
     return result
 
 
-def get_field_type(cls: type) -> type:
-    origin = get_origin(cls)
+def get_inner_type(cls: type) -> type:
+    """
+    Get the type that's used to construct individual items.
+    """
+    origin = get_origin_type(cls)
     if origin is list:
         if type(cls) is typing._AnnotatedAlias:  # type:ignore
             type_args = typing.get_args(typing.get_args(cls)[0])

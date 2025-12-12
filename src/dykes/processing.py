@@ -63,66 +63,88 @@ def _build_parser(
     path: str, application_definition: type, parser: argparse.ArgumentParser
 ):
     fields = _get_fields(application_definition)
+    subparsers = None
+
+    parser.set_defaults(**{f"cls:{path}": application_definition})
 
     for fname, field in fields.items():
-        #: The real, constructable type, stripped of specializations and annotations
-        real_type = utils.get_origin(field.type)
-        if real_type is object:
-            # User didn't define any casting, so don't
-            real_type = str
+        # field.type is the rich type of the attribute
+        # outer_type is the rich type simplified to a real class
+        # inner_type is the innermost type of any collections (ie, the construction type of arguments)
+        # On *_type, Optional[] (aka _|None) is stripped
+        outer_type = utils.get_origin_type(field.type)
+        inner_type = utils.get_inner_type(field.type)
+        print(f"{field.type=} {outer_type=} {inner_type=}")
         parameter_options: internal.ParameterOptions = internal.ParameterOptions(
             dest=f"{path}.{fname}" if path else fname,
-            type=utils.get_field_type(field.type),
+            type=inner_type,
             # default=internal.UNSET if field.default is internal.UNSET else repr(field.default),
         )
 
-        parameter_options = utils.fill_meta_args(field.annotations, parameter_options)
-
-        if parameter_options.action is internal.UNSET:
-            if parameter_options.type is bool:
-                if parameter_options.default is True:
-                    parameter_options.action = options.Action.STORE_FALSE
-                elif parameter_options.default in (False, internal.UNSET):
-                    parameter_options.action = options.Action.STORE_TRUE
-
-        if parameter_options.action in NO_TYPE:
-            parameter_options.type = internal.UNSET
-
-        store_flag_unset = (
-            parameter_options.action is options.Action.STORE
-            and parameter_options.flags is internal.UNSET
-        )
-        # If explicit Store action, we assume it's a flag.
-        must_be_flag_unset = (
-            parameter_options.action in MUST_BE_FLAG and not parameter_options.flags
-        )
-        if store_flag_unset or must_be_flag_unset:
-            parameter_options.flags = [f"-{fname[0]}", f"--{fname.replace('_', '-')}"]
-
-        if parameter_options.action is options.Action.COUNT:
-            parameter_options.default = (
-                parameter_options.default if parameter_options.default else 0
+        if any(anno == options.Subparser for anno in field.annotations):
+            assert len(field.annotations) == 1, (
+                "Can't mix other annnotations with Subparser"
+            )
+            assert outer_type == inner_type
+            innercls = inner_type
+            if subparsers is None:
+                subparsers = parser.add_subparsers(dest=f"subparser:{path}")
+            subparser = subparsers.add_parser(fname, help=innercls.__doc__)
+            _build_parser(f"{path}.{fname}" if path else fname, innercls, subparser)
+        else:
+            parameter_options = utils.fill_meta_args(
+                field.annotations, parameter_options
             )
 
-        if real_type is list and parameter_options.nargs is internal.UNSET:
-            parameter_options.nargs = "+"
+            if parameter_options.action is internal.UNSET:
+                if inner_type is bool:
+                    if field.default is True:
+                        parameter_options.action = options.Action.STORE_FALSE
+                    elif field.default in (False, internal.UNSET):
+                        parameter_options.action = options.Action.STORE_TRUE
 
-        flag_unset = parameter_options.flags is internal.UNSET
-        default_set = parameter_options.default is not internal.UNSET
-        nargs_not_default_friendly = parameter_options.nargs not in ("?", "*")
-        if default_set and flag_unset and nargs_not_default_friendly:
-            raise ValueError(
-                "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+            if parameter_options.action in NO_TYPE:
+                parameter_options.type = internal.UNSET
+
+            store_flag_unset = (
+                parameter_options.action is options.Action.STORE
+                and parameter_options.flags is internal.UNSET
             )
+            # If explicit Store action, we assume it's a flag.
+            must_be_flag_unset = (
+                parameter_options.action in MUST_BE_FLAG and not parameter_options.flags
+            )
+            if store_flag_unset or must_be_flag_unset:
+                parameter_options.flags = [
+                    f"-{fname[0]}",
+                    f"--{fname.replace('_', '-')}",
+                ]
 
-        arguments = parameter_options.as_dict()
-        flags = arguments.pop("flags", None)
-        name_or_flags = flags if flags else [fname]
-        if not flags:
-            arguments.pop("dest")
-        # Don't let argparse deal with defaults; that's the struct's job
-        # FIXME: Do this so that %(default)s in help works
-        parser.add_argument(*name_or_flags, default=argparse.SUPPRESS, **arguments)
+            # if parameter_options.action is options.Action.COUNT:
+            #     parameter_options.default = (
+            #         parameter_options.default if parameter_options.default else 0
+            #     )
+
+            if outer_type is list and parameter_options.nargs is internal.UNSET:
+                parameter_options.nargs = "+"
+
+            flag_unset = parameter_options.flags is internal.UNSET
+            # default_set = parameter_options.default is not internal.UNSET
+            default_set = field.default
+            nargs_not_default_friendly = parameter_options.nargs not in ("?", "*")
+            if default_set and flag_unset and nargs_not_default_friendly:
+                raise ValueError(
+                    "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+                )
+
+            arguments = parameter_options.as_dict()
+            flags = arguments.pop("flags", None)
+            name_or_flags = flags if flags else [fname]
+            if not flags:
+                arguments.pop("dest")
+            # Don't let argparse deal with defaults; that's the struct's job
+            # FIXME: Do this so that %(default)s in help works
+            parser.add_argument(*name_or_flags, default=argparse.SUPPRESS, **arguments)
 
     return parser
 
@@ -216,34 +238,44 @@ def _get_fields(cls: type) -> dict[str, internal.Field]:
 
 def build_instance[T](cls: type[T], params: dict[str, typing.Any]) -> T:
     # First, instantiate any inner classes that need to happen
-    inner_classes = {
+    subparsers: dict[str, str] = {
         key.removeprefix("subparser:"): params.pop(key)
         for key in list(params.keys())
         if key.startswith("subparser:")
     }
-    return _build_instance(cls, params, inner_classes)
+    classes: dict[str, type] = {
+        key.removeprefix("cls:"): params.pop(key)
+        for key in list(params.keys())
+        if key.startswith("cls:")
+    }
+    return _build_instance(cls, params, subparsers, classes)
+
+
+def _dict_remove_prefix(prefix: str, dct: dict) -> dict:
+    return {
+        key.removeprefix(prefix): value
+        for key, value in dct.items()
+        if key.startswith(prefix)
+    }
 
 
 def _build_instance[T](
-    cls: type[T], params: dict[str, typing.Any], inner_classes: dict[str, str]
+    cls: type[T],
+    params: dict[str, typing.Any],
+    subparsers: dict[str, str],
+    classes: dict[str, type],
 ) -> T:
+    print(f"{params=}")
     # Get this level of params handled
     attrs = {key: value for key, value in params.items() if "." not in key}
 
-    if inner_classes:
-        subitem = inner_classes.pop("")
+    if subparsers:
+        subitem = subparsers.pop("")
         attrs[subitem] = _build_instance(
-            getattr(cls, subitem),
-            {
-                key.removeprefix(f"{subitem}."): value
-                for key, value in params.items()
-                if key.startswith(f"{subitem}.")
-            },
-            {
-                key.removeprefix(f"{subitem}."): value
-                for key, value in inner_classes.items()
-                if key.startswith(f"{subitem}.")
-            },
+            classes[subitem],
+            _dict_remove_prefix(f"{subitem}.", params),
+            _dict_remove_prefix(f"{subitem}.", subparsers),
+            _dict_remove_prefix(f"{subitem}.", classes),
         )
 
     return cls(**attrs)

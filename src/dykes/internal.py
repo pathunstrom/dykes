@@ -54,7 +54,7 @@ class ParameterOptions[T]:
     flags: list[str] | _Unset = UNSET
     help: str | _Unset = UNSET
     action: options.Action | _Unset = UNSET
-    default: str | _Unset = UNSET
+    # default: str | _Unset = UNSET
     nargs: int | typing.Literal["?", "+", "*"] | _Unset = UNSET
 
     def as_dict(self) -> dict[str, typing.Any]:

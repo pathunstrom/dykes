@@ -1,6 +1,5 @@
 from .processing import parse_args, build_parser
-from .options import Action, Count, StoreFalse, StoreTrue
-from .parsegroups import subcommand
+from .options import Action, Count, StoreFalse, StoreTrue, Subparser
 
 __all__ = [
     "options",
@@ -10,5 +9,5 @@ __all__ = [
     "Count",
     "StoreFalse",
     "StoreTrue",
-    "subcommand",
+    "Subparser",
 ]
