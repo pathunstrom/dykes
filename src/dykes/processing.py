@@ -54,13 +54,20 @@ def parse_args[ArgsType](
 def build_parser(application_definition: type) -> argparse.ArgumentParser:
     description = getdoc(application_definition)
     parser = argparse.ArgumentParser(description=description)
+    _build_parser("", application_definition, parser)
+    return parser
+
+
+def _build_parser(
+    path: str, application_definition: type, parser: argparse.ArgumentParser
+):
     hints = typing.get_type_hints(application_definition, include_extras=True)
     fields = _get_fields(application_definition)
 
     for dest, cls in hints.items():
         origin = utils.get_origin(cls)
         parameter_options: internal.ParameterOptions = internal.ParameterOptions(
-            dest=dest,
+            dest=f"{path}.{dest}" if path else dest,
             type=utils.get_field_type(cls),
             default=fields[dest].value if fields[dest].value else internal.UNSET,
         )
@@ -104,12 +111,24 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
                 "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
             )
         arguments = parameter_options.as_dict()
-        dest = arguments["dest"]
+        # dest = arguments["dest"]
         flags = arguments.pop("flags", None)
         name_or_flags = flags if flags else [dest]
         if not flags:
             arguments.pop("dest")
         parser.add_argument(*name_or_flags, **arguments)
+
+    subparsers = None
+    for name in dir(application_definition):
+        if name.startswith("_"):
+            continue
+        value = getattr(application_definition, name)
+        if isinstance(value, type):  # Inner class
+            if subparsers is None:
+                subparsers = parser.add_subparsers(dest=f"subparser:{path}")
+            subparser = subparsers.add_parser(value.__name__, help=value.__doc__)
+            _build_parser(f"{path}.{value.__name__}", value, subparser)
+
     return parser
 
 
