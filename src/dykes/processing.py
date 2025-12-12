@@ -7,6 +7,7 @@ This is all the things used internally to turn your definitions into something u
 import argparse
 import dataclasses
 import typing
+import warnings
 from inspect import getdoc
 from sys import argv
 
@@ -61,18 +62,21 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
 def _build_parser(
     path: str, application_definition: type, parser: argparse.ArgumentParser
 ):
-    hints = typing.get_type_hints(application_definition, include_extras=True)
     fields = _get_fields(application_definition)
 
-    for dest, cls in hints.items():
-        origin = utils.get_origin(cls)
+    for fname, field in fields.items():
+        #: The real, constructable type, stripped of specializations and annotations
+        real_type = utils.get_origin(field.type)
+        if real_type is object:
+            # User didn't define any casting, so don't
+            real_type = str
         parameter_options: internal.ParameterOptions = internal.ParameterOptions(
-            dest=f"{path}.{dest}" if path else dest,
-            type=utils.get_field_type(cls),
-            default=fields[dest].value if fields[dest].value else internal.UNSET,
+            dest=f"{path}.{fname}" if path else fname,
+            type=utils.get_field_type(field.type),
+            # default=internal.UNSET if field.default is internal.UNSET else repr(field.default),
         )
 
-        parameter_options = utils.get_meta_args(cls, parameter_options)
+        parameter_options = utils.fill_meta_args(field.annotations, parameter_options)
 
         if parameter_options.action is internal.UNSET:
             if parameter_options.type is bool:
@@ -93,14 +97,14 @@ def _build_parser(
             parameter_options.action in MUST_BE_FLAG and not parameter_options.flags
         )
         if store_flag_unset or must_be_flag_unset:
-            parameter_options.flags = [f"-{dest[0]}", f"--{dest.replace('_', '-')}"]
+            parameter_options.flags = [f"-{fname[0]}", f"--{fname.replace('_', '-')}"]
 
         if parameter_options.action is options.Action.COUNT:
             parameter_options.default = (
                 parameter_options.default if parameter_options.default else 0
             )
 
-        if origin is list and parameter_options.nargs is internal.UNSET:
+        if real_type is list and parameter_options.nargs is internal.UNSET:
             parameter_options.nargs = "+"
 
         flag_unset = parameter_options.flags is internal.UNSET
@@ -110,36 +114,20 @@ def _build_parser(
             raise ValueError(
                 "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
             )
+
         arguments = parameter_options.as_dict()
-        # dest = arguments["dest"]
         flags = arguments.pop("flags", None)
-        name_or_flags = flags if flags else [dest]
+        name_or_flags = flags if flags else [fname]
         if not flags:
             arguments.pop("dest")
-        parser.add_argument(*name_or_flags, **arguments)
-
-    subparsers = None
-    for name in dir(application_definition):
-        if name.startswith("_"):
-            continue
-        value = getattr(application_definition, name)
-        if isinstance(value, type):  # Inner class
-            if subparsers is None:
-                subparsers = parser.add_subparsers(dest=f"subparser:{path}")
-            subparser = subparsers.add_parser(value.__name__, help=value.__doc__)
-            _build_parser(
-                f"{path}.{value.__name__}" if path else value.__name__, value, subparser
-            )
+        # Don't let argparse deal with defaults; that's the struct's job
+        # FIXME: Do this so that %(default)s in help works
+        parser.add_argument(*name_or_flags, default=argparse.SUPPRESS, **arguments)
 
     return parser
 
 
-class _Field(typing.Protocol):
-    default: typing.Any
-    default_factory: typing.Callable[[], typing.Any]
-
-
-def _get_default(data_class_field: _Field):
+def _get_default_dataclass(data_class_field: dataclasses.Field):
     if data_class_field.default is not dataclasses.MISSING:
         return data_class_field.default
     elif data_class_field.default_factory is not dataclasses.MISSING:
@@ -148,42 +136,82 @@ def _get_default(data_class_field: _Field):
         return internal.UNSET
 
 
-def _get_fields(cls: type) -> dict["str", internal.Field]:
-    fields = {}
-    if dataclasses.is_dataclass(cls):
-        fields = {
-            field.name: internal.Field(
-                field.name, _get_default(typing.cast(_Field, field))
-            )
-            for field in dataclasses.fields(cls)
-        }
+def _get_dataclass_fields(cls: type) -> set[str] | None:
+    try:
+        return set(dataclasses.fields(cls))
+    except TypeError:
+        return None
 
-    elif isinstance(cls, internal.NamedTupleProtocol):
-        fields = {
-            field: internal.Field(field, cls._field_defaults.get(field, internal.UNSET))
-            for field in cls._fields
-        }
+
+class UsageWarning(RuntimeWarning):
+    pass
+
+
+def _get_fields(cls: type) -> dict[str, internal.Field]:
+    """
+    Reads all the data from attributes, annotations, library field objects, etc.
+    """
+    # Doesn't include Annotated
+    simple_annos = typing.get_type_hints(cls)
+    # Does include Annotated
+    full_annos = typing.get_type_hints(cls, include_extras=True)
+    if (attrnames := _get_dataclass_fields(cls)) is not None:
+        pass
+    if issubclass(cls, tuple):
+        attrnames = set(cls._fields)
     else:
-        raise ValueError(
-            f"{cls.__name__} is not a supported class type. Please use a dataclass or NamedTuple."
+        # Vanilla, read the attributes off the class
+        attrnames = set(
+            n
+            for c in cls.__mro__
+            if c is not tuple
+            for n in vars(c).keys()  # Not dir, only want things defined on this class
+            if not n.startswith("_")
         )
+
+        # Methods are callables without annotations
+        attrnames ^= set(
+            aname
+            for aname in attrnames
+            if callable(getattr(cls, aname)) and aname not in full_annos
+        )
+
+    fields = {}
+    for field_name in attrnames | set(full_annos.keys()):
+        field_default = getattr(cls, field_name, internal.UNSET)
+        field_type = simple_annos.get(field_name, object)
+        field_anno = full_annos.get(field_name, None)
+
+        if field_anno is field_type:  # Simple annotation
+            field_anno = None
+
+        if field_anno is not None:
+            anno_list = list(typing.get_args(field_anno))
+            anno_list.pop(0)  # Remove the base type, that's field_type
+        else:
+            anno_list = []
+
+        if issubclass(cls, tuple):
+            # NamedTuple
+            field_default = cls._field_defaults.get(field_name, internal.UNSET)
+        elif isinstance(field_default, dataclasses.Field):
+            # dataclass
+            field_default = _get_default_dataclass(field_default)
+        elif hasattr(field_default, "default"):
+            # XXX: Should this be an exception?
+            warnings.warn(
+                f"Saw a {field_default!r} as a default value; is this an unsupported struct?",
+                UsageWarning,
+            )
+
+        fields[field_name] = internal.Field(
+            name=field_name,
+            default=field_default,
+            type=field_type,
+            annotations=anno_list,
+        )
+
     return fields
-
-
-def _getitem(inst: dict, path: str) -> typing.Any:
-    if "." not in path:
-        return inst[path]
-    else:
-        this, _, rest = path.partition(".")
-        return _getitem(getattr(inst, this), rest)
-
-
-def _setitem(inst: dict, path: str, value: typing.Any):
-    if "." not in path:
-        inst[path] = value
-    else:
-        this, _, rest = path.partition(".")
-        return _setitem(inst[this], rest)
 
 
 def build_instance[T](cls: type[T], params: dict[str, typing.Any]) -> T:

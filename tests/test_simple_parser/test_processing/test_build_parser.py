@@ -150,3 +150,15 @@ def test_positional_parameter_with_default_raises():
         str(err_info.value)
         == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
     )
+
+
+def test_handles_methods():
+    class Application(NamedTuple):
+        dani: str
+
+        def do_thing(self):
+            pass
+
+    result_parser = dykes.build_parser(Application)
+
+    assert len(result_parser._actions) == 2

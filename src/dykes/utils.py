@@ -47,19 +47,18 @@ def get_field_type(cls: type) -> type:
         return cls
 
 
-def get_meta_args[FieldType](
-    cls: type[FieldType], parameter_options: internal.ParameterOptions
+def fill_meta_args[FieldType](
+    annos: list, parameter_options: internal.ParameterOptions
 ) -> internal.ParameterOptions[FieldType]:
-    if (meta := getattr(cls, "__metadata__", None)) is not None:
-        for datum in meta:
-            if is_instance_unique(datum, options.Action, parameter_options):
-                parameter_options.action = datum
-            elif is_instance_unique(datum, str, parameter_options):
-                parameter_options.help = datum
-            elif is_instance_unique(datum, options.NArgs, parameter_options):
-                parameter_options.nargs = datum.value
-            elif is_instance_unique(datum, options.Flags, parameter_options):
-                parameter_options.flags = datum.value
+    for datum in annos:
+        if is_instance_unique(datum, options.Action, parameter_options):
+            parameter_options.action = datum
+        elif is_instance_unique(datum, str, parameter_options):
+            parameter_options.help = datum
+        elif is_instance_unique(datum, options.NArgs, parameter_options):
+            parameter_options.nargs = datum.value
+        elif is_instance_unique(datum, options.Flags, parameter_options):
+            parameter_options.flags = datum.value
 
     return parameter_options
 

@@ -21,8 +21,20 @@ UNSET = _Unset()
 
 @dataclasses.dataclass
 class Field:
+    """
+    Individual attribute on the given class.
+
+    Represents the data in the class definition
+    """
+
+    #: Attribute name
     name: str
-    value: typing.Any
+    #: The default value, or UNSET
+    default: object | _Unset
+    #: The rich type of the value (can be Union, etc)
+    type: type
+    #: Additional annotations
+    annotations: list
 
 
 @typing.runtime_checkable
@@ -33,12 +45,16 @@ class NamedTupleProtocol(typing.Protocol):
 
 @dataclasses.dataclass
 class ParameterOptions[T]:
+    """
+    Data representative of argparse
+    """
+
     dest: str | _Unset
-    type: typing.Type[T] | typing.Callable[[], T] | _Unset
+    type: type[T] | _Unset
     flags: list[str] | _Unset = UNSET
     help: str | _Unset = UNSET
     action: options.Action | _Unset = UNSET
-    default: T | _Unset = UNSET
+    default: str | _Unset = UNSET
     nargs: int | typing.Literal["?", "+", "*"] | _Unset = UNSET
 
     def as_dict(self) -> dict[str, typing.Any]:
