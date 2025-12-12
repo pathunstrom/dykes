@@ -12,4 +12,6 @@ class _Descriptor[T, P](typing.Protocol):
 
 
 def subcommand[T](cls: type[T]) -> _Descriptor[T | None]:
-    return dataclasses.dataclass(cls)
+    if cls.__bases__ == (object,):
+        cls = dataclasses.dataclass(cls)
+    return cls

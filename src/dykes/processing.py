@@ -48,7 +48,7 @@ def parse_args[ArgsType](
         args = argv[1:]
     parser = build_parser(parameter_definition)
     parsed = parser.parse_args(args)
-    return parameter_definition(**vars(parsed))
+    return build_instance(parameter_definition, vars(parsed))
 
 
 def build_parser(application_definition: type) -> argparse.ArgumentParser:
@@ -127,7 +127,9 @@ def _build_parser(
             if subparsers is None:
                 subparsers = parser.add_subparsers(dest=f"subparser:{path}")
             subparser = subparsers.add_parser(value.__name__, help=value.__doc__)
-            _build_parser(f"{path}.{value.__name__}", value, subparser)
+            _build_parser(
+                f"{path}.{value.__name__}" if path else value.__name__, value, subparser
+            )
 
     return parser
 
@@ -166,3 +168,54 @@ def _get_fields(cls: type) -> dict["str", internal.Field]:
             f"{cls.__name__} is not a supported class type. Please use a dataclass or NamedTuple."
         )
     return fields
+
+
+def _getitem(inst: dict, path: str) -> typing.Any:
+    if "." not in path:
+        return inst[path]
+    else:
+        this, _, rest = path.partition(".")
+        return _getitem(getattr(inst, this), rest)
+
+
+def _setitem(inst: dict, path: str, value: typing.Any):
+    if "." not in path:
+        inst[path] = value
+    else:
+        this, _, rest = path.partition(".")
+        return _setitem(inst[this], rest)
+
+
+def build_instance[T](cls: type[T], params: dict[str, typing.Any]) -> T:
+    # First, instantiate any inner classes that need to happen
+    inner_classes = {
+        key.removeprefix("subparser:"): params.pop(key)
+        for key in list(params.keys())
+        if key.startswith("subparser:")
+    }
+    return _build_instance(cls, params, inner_classes)
+
+
+def _build_instance[T](
+    cls: type[T], params: dict[str, typing.Any], inner_classes: dict[str, str]
+) -> T:
+    # Get this level of params handled
+    attrs = {key: value for key, value in params.items() if "." not in key}
+
+    if inner_classes:
+        subitem = inner_classes.pop("")
+        attrs[subitem] = _build_instance(
+            getattr(cls, subitem),
+            {
+                key.removeprefix(f"{subitem}."): value
+                for key, value in params.items()
+                if key.startswith(f"{subitem}.")
+            },
+            {
+                key.removeprefix(f"{subitem}."): value
+                for key, value in inner_classes.items()
+                if key.startswith(f"{subitem}.")
+            },
+        )
+
+    return cls(**attrs)
