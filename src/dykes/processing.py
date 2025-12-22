@@ -74,7 +74,6 @@ def _build_parser(
         # On *_type, Optional[] (aka _|None) is stripped
         outer_type = utils.get_origin_type(field.type)
         inner_type = utils.get_inner_type(field.type)
-        print(f"{field.type=} {outer_type=} {inner_type=}")
         parameter_options: internal.ParameterOptions = internal.ParameterOptions(
             dest=f"{path}.{fname}" if path else fname,
             type=inner_type,
@@ -252,21 +251,6 @@ def _get_fields(cls: type) -> dict[str, internal.Field]:
     return fields
 
 
-def build_instance[T](cls: type[T], params: dict[str, typing.Any]) -> T:
-    # First, instantiate any inner classes that need to happen
-    subparsers: dict[str, str] = {
-        key.removeprefix("subparser:"): params.pop(key)
-        for key in list(params.keys())
-        if key.startswith("subparser:")
-    }
-    classes: dict[str, type] = {
-        key.removeprefix("cls:"): params.pop(key)
-        for key in list(params.keys())
-        if key.startswith("cls:")
-    }
-    return _build_instance(cls, params, subparsers, classes)
-
-
 def _dict_remove_prefix(prefix: str, dct: dict) -> dict:
     return {
         key.removeprefix(prefix): value
@@ -275,17 +259,24 @@ def _dict_remove_prefix(prefix: str, dct: dict) -> dict:
     }
 
 
+def build_instance[T](cls: type[T], params: dict[str, typing.Any]) -> T:
+    # First, instantiate any inner classes that need to happen
+    subparsers: dict[str, str] = _dict_remove_prefix("subparser:", params)
+    classes: dict[str, type] = _dict_remove_prefix("cls:", params)
+    params = {key: value for key, value in params.items() if ":" not in key}
+    return _build_instance(cls, params, subparsers, classes)
+
+
 def _build_instance[T](
     cls: type[T],
     params: dict[str, typing.Any],
     subparsers: dict[str, str],
     classes: dict[str, type],
 ) -> T:
-    print(f"{params=}")
     # Get this level of params handled
     attrs = {key: value for key, value in params.items() if "." not in key}
 
-    if subparsers:
+    if subparsers[""] is not None:
         subitem = subparsers.pop("")
         attrs[subitem] = _build_instance(
             classes[subitem],
