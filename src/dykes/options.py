@@ -55,4 +55,4 @@ class Flags:
 
 _SUBPARSER = object()
 
-type Subparser[T] = typing.Annotated[T, _SUBPARSER]
+type Subparser[T] = typing.Annotated[T | None, _SUBPARSER]
