@@ -12,7 +12,7 @@ def test_dataclass():
     @dataclasses.dataclass
     class Application:
         outer: dykes.StoreTrue
-        cmd: typing.Annotated[Cmd, dykes.Subparser]
+        cmd: dykes.Subparser[Cmd]
 
     args = dykes.parse_args(Application, args=["--outer", "cmd", "--inner"])
     assert args.outer
@@ -26,7 +26,7 @@ def test_namedtuple():
 
     class Application(typing.NamedTuple):
         outer: dykes.StoreTrue
-        cmd: typing.Annotated[Cmd, dykes.Subparser]
+        cmd: dykes.Subparser[Cmd]
 
     args = dykes.parse_args(Application, args=["--outer", "cmd", "--inner"])
     assert args.outer

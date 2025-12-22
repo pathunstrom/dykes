@@ -81,7 +81,7 @@ def _build_parser(
             # default=internal.UNSET if field.default is internal.UNSET else repr(field.default),
         )
 
-        if any(anno == options.Subparser for anno in field.annotations):
+        if options._SUBPARSER in field.annotations:
             assert len(field.annotations) == 1, (
                 "Can't mix other annnotations with Subparser"
             )
@@ -209,6 +209,11 @@ def _get_fields(cls: type) -> dict[str, internal.Field]:
         field_default = getattr(cls, field_name, internal.UNSET)
         field_type = simple_annos.get(field_name, object)
         field_anno = full_annos.get(field_name, None)
+        is_subparser = False
+
+        if typing.get_origin(field_type) is options.Subparser:
+            field_type = typing.get_args(field_type)[0]
+            is_subparser = True
 
         if field_anno is field_type:  # Simple annotation
             field_anno = None
@@ -218,6 +223,9 @@ def _get_fields(cls: type) -> dict[str, internal.Field]:
             anno_list.pop(0)  # Remove the base type, that's field_type
         else:
             anno_list = []
+
+        if is_subparser:
+            anno_list.append(options._SUBPARSER)
 
         if issubclass(cls, tuple):
             # NamedTuple

@@ -53,4 +53,6 @@ class Flags:
         return hash(f"Flags[{','.join(self.value)}]")
 
 
-type Subparser[T] = typing.Annotated[T]
+_SUBPARSER = object()
+
+type Subparser[T] = typing.Annotated[T, _SUBPARSER]

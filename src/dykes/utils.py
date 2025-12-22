@@ -17,6 +17,8 @@ def _strip_decor(t: _Annotation) -> type | typing._SpecialForm:
             return _strip_decor(args[0])
         case typing.Optional:
             return _strip_decor(args[0])
+        case options.Subparser:
+            return _strip_decor(args[0])
         case typing.Union if len(args) == 2 and types.NoneType in args:
             # X|None, semantically the same as Optional
             args.remove(types.NoneType)
@@ -63,9 +65,6 @@ def get_inner_type(cls: _Annotation) -> type:
     """
     cls = _strip_decor(cls)
     outer = get_origin_type(cls)
-    origin = typing.get_origin(cls)
-    print(f"{cls=} {outer=} {origin=} {_strip_decor(cls)=}")
-    # breakpoint()
     if outer is list:
         if type(cls) is typing._AnnotatedAlias:  # type:ignore
             type_args = typing.get_args(typing.get_args(cls)[0])
