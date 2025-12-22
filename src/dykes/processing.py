@@ -160,7 +160,7 @@ def _get_default_dataclass(data_class_field: dataclasses.Field):
 
 def _get_dataclass_fields(cls: type) -> set[str] | None:
     try:
-        return set(dataclasses.fields(cls))
+        return set(f.name for f in dataclasses.fields(cls))
     except TypeError:
         return None
 
@@ -180,7 +180,13 @@ def _get_fields(cls: type) -> dict[str, internal.Field]:
     if (attrnames := _get_dataclass_fields(cls)) is not None:
         pass
     if issubclass(cls, tuple):
-        attrnames = set(cls._fields)
+        # Assumed to be NamedTuple
+        try:
+            attrnames = set(cls._fields)  # type: ignore
+        except AttributeError as exc:
+            raise TypeError(
+                "Must use typing.NamedTuple or collections.namedtuple. Got {cls!r}"
+            ) from exc
     else:
         # Vanilla, read the attributes off the class
         attrnames = set(
@@ -215,6 +221,8 @@ def _get_fields(cls: type) -> dict[str, internal.Field]:
 
         if issubclass(cls, tuple):
             # NamedTuple
+            # asserting this was covered above
+            assert hasattr(cls, "_field_defaults")
             field_default = cls._field_defaults.get(field_name, internal.UNSET)
         elif isinstance(field_default, dataclasses.Field):
             # dataclass

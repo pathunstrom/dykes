@@ -1,43 +1,77 @@
+import types
 import typing
 
 from . import internal, options
 
+_Annotation: typing.TypeAlias = type | typing._SpecialForm
 
-def get_origin_type(t: type) -> type:
+
+def _strip_decor(t: _Annotation) -> type | typing._SpecialForm:
+    """
+    Strip Optional, Annotated, Final, etc
+    """
+    origin = typing.get_origin(t)
+    args = list(typing.get_args(t))
+    match origin:
+        case typing.Annotated:
+            return _strip_decor(args[0])
+        case typing.Optional:
+            return _strip_decor(args[0])
+        case typing.Union if len(args) == 2 and types.NoneType in args:
+            # X|None, semantically the same as Optional
+            args.remove(types.NoneType)
+            return args[0]
+        case typing.Union:
+            # Dubious that we should handle this
+            return typing.Union[*map(_strip_decor, args)]
+        # FIXME: Do more
+        case _:
+            return t
+
+
+def get_origin_type(t: _Annotation) -> type:
     """
     Get true type from a hint. (That is, the actual type of the annotated variable.)
 
     A version of typing.get_origin that exposed Annotated types to their root
     and also returns the input for un-subscripted types.
     """
+    t = _strip_decor(t)
     result = typing.get_origin(t)
     if result is None:
-        return t
+        # "unsupported types" ie plain classes
+        return t  # type: ignore
+    elif t is typing.Annotated:
+        raise ValueError(
+            "Annotated without a type or annotations. Please subscript Annotated."
+        )
     elif result is typing.Annotated:
-        if isinstance(t, internal.HasOrigin) and isinstance(
-            t.__origin__,
-            (type, typing.GenericAlias),  # type:ignore
-        ):  # Make mypy happy.
-            return get_origin_type(t.__origin__)
-        else:
-            raise ValueError(
-                "Annotated without a type or annotations. Please subscript Annotated."
-            )
-    return result
+        # Despite the name, get_origin gets the outer type and __origin__ is the inner type
+        inner: _Annotation = t.__origin__  # type: ignore
+        return get_origin_type(inner)
+    else:
+        # This covers:
+        # * Regular annotations (list[str])
+        # * Jamie isn't sure what else
+        assert isinstance(result, type)
+        return result
 
 
-def get_inner_type(cls: type) -> type:
+def get_inner_type(cls: _Annotation) -> type:
     """
     Get the type that's used to construct individual items.
     """
-    origin = get_origin_type(cls)
-    if origin is list:
+    cls = _strip_decor(cls)
+    outer = get_origin_type(cls)
+    origin = typing.get_origin(cls)
+    print(f"{cls=} {outer=} {origin=} {_strip_decor(cls)=}")
+    # breakpoint()
+    if outer is list:
         if type(cls) is typing._AnnotatedAlias:  # type:ignore
             type_args = typing.get_args(typing.get_args(cls)[0])
         else:
             type_args = typing.get_args(cls)
         if len(type_args) > 1:
-            print(origin, typing.get_args(cls), type(cls))
             change_to = " or ".join(f"list[{t.__name__}]" for t in typing.get_args(cls))
             raise ValueError(
                 f"dykes does not support lists with multiple type values. Convert {cls} to {change_to}"
@@ -45,8 +79,11 @@ def get_inner_type(cls: type) -> type:
         elif len(type_args) == 0:
             return str
         else:
-            return type_args[0]
+            inner = _strip_decor(type_args[0])
+            assert isinstance(inner, type)
+            return inner
     else:
+        assert isinstance(cls, type)
         return cls
 
 
