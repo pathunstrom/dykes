@@ -12,6 +12,11 @@ class ConfigCmd:
 @dataclasses.dataclass
 class DoCmd:
     path: typing.Annotated[str, "Path to do thing with"]
+    dest: typing.Annotated[
+        str,
+        "Where to put it",
+        dykes.Action.STORE,
+    ]
 
 
 @dataclasses.dataclass

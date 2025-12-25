@@ -56,6 +56,7 @@ class ParameterOptions[T]:
     action: options.Action | _Unset = UNSET
     # default: str | _Unset = UNSET
     nargs: int | typing.Literal["?", "+", "*"] | _Unset = UNSET
+    metavar: str | _Unset = UNSET
 
     def as_dict(self) -> dict[str, typing.Any]:
         output = {

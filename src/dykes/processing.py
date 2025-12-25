@@ -77,6 +77,7 @@ def _build_parser(
         parameter_options: internal.ParameterOptions = internal.ParameterOptions(
             dest=f"{path}.{fname}" if path else fname,
             type=inner_type,
+            metavar=fname,
             # default=internal.UNSET if field.default is internal.UNSET else repr(field.default),
         )
 
@@ -138,9 +139,17 @@ def _build_parser(
 
             arguments = parameter_options.as_dict()
             flags = arguments.pop("flags", None)
-            name_or_flags = flags if flags else [fname]
             if not flags:
-                arguments.pop("dest")
+                name_or_flags = [arguments.pop("dest")]
+            else:
+                name_or_flags = flags
+                if arguments.get("action", None) not in (
+                    None,
+                    options.Action.STORE,
+                    options.Action.APPEND,
+                    options.Action.EXTEND,
+                ):
+                    arguments.pop("metavar")
             # Don't let argparse deal with defaults; that's the struct's job
             # FIXME: Do this so that %(default)s in help works
             parser.add_argument(*name_or_flags, default=argparse.SUPPRESS, **arguments)

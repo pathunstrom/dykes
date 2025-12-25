@@ -46,12 +46,18 @@ def test_namedtuple():
         ["cmd", "--inner"],
         ["--outer", "cmd", "--inner"],
         ["--outer", "cmd"],
+        ["cmd", "--opt=foo"],
+        ["cmd", "--opt", "foo"],
     ),
 )
 def test_parsing(argv):
     @dataclasses.dataclass
     class Cmd:
         inner: dykes.StoreTrue = False
+        opt: typing.Annotated[
+            str,
+            dykes.Action.STORE,
+        ] = "no"
 
     @dataclasses.dataclass
     class Application:
