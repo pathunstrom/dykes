@@ -39,13 +39,13 @@ def test_namedtuple():
 @pytest.mark.parametrize(
     "argv",
     (
-        ([],),
-        (["--help"],),
-        (["cmd"],),
-        (["--outer"],),
-        (["cmd", "--inner"],),
-        (["--outer", "cmd", "--inner"],),
-        (["--outer", "cmd"],),
+        [],
+        ["--help"],
+        ["cmd"],
+        ["--outer"],
+        ["cmd", "--inner"],
+        ["--outer", "cmd", "--inner"],
+        ["--outer", "cmd"],
     ),
 )
 def test_parsing(argv):

@@ -276,7 +276,7 @@ def _build_instance[T](
     # Get this level of params handled
     attrs = {key: value for key, value in params.items() if "." not in key}
 
-    if subparsers[""] is not None:
+    if subparsers and subparsers[""] is not None:
         subitem = subparsers.pop("")
         attrs[subitem] = _build_instance(
             classes[subitem],
