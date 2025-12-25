@@ -6,11 +6,19 @@ import dykes
 
 @dataclasses.dataclass
 class ConfigCmd:
+    """
+    Configure the command
+    """
+
     pass
 
 
 @dataclasses.dataclass
 class DoCmd:
+    """
+    Do the thing
+    """
+
     path: typing.Annotated[str, "Path to do thing with"]
     dest: typing.Annotated[
         str,
