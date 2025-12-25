@@ -68,3 +68,18 @@ def test_parsing(argv):
         dykes.parse_args(Application, args=argv)
     except SystemExit as exc:
         assert exc.code == 0
+
+
+def test_multi_args():
+    @dataclasses.dataclass
+    class Cmd:
+        foo: str
+        bar: str
+
+    @dataclasses.dataclass
+    class Application:
+        cmd: dykes.Subparser[Cmd] = None
+
+    app = dykes.parse_args(Application, args=["cmd", "spam", "eggs"])
+    assert app.cmd.foo == "spam"
+    assert app.cmd.bar == "eggs"

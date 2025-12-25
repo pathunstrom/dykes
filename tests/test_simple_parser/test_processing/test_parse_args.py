@@ -117,3 +117,14 @@ def test_option_explicit_store_makes_flag():
 
     app = dykes.parse_args(Application, args=["-f", "test"])
     assert app.foo == "test"
+
+
+def test_multi_args():
+    @dataclasses.dataclass
+    class Application:
+        foo: str
+        bar: str
+
+    app = dykes.parse_args(Application, args=["spam", "eggs"])
+    assert app.foo == "spam"
+    assert app.bar == "eggs"
