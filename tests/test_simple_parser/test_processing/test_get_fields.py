@@ -23,7 +23,7 @@ def test_get_fields_from_namedtuple():
         number: int
         flag: bool = True
 
-    fields = _get_fields(Args)
+    fields = dict(_get_fields(Args))
 
     number_field = fields["number"]
     assert number_field.name == "number"
@@ -45,7 +45,7 @@ def test_get_fields_from_namedtuple_with_optional_none_default():
         optional: int | None = None
         flag: bool = True
 
-    fields = _get_fields(Args)
+    fields = dict(_get_fields(Args))
 
     number_field = fields["number"]
     assert number_field.name == "number"
@@ -72,7 +72,7 @@ def test_get_fields_from_dataclass():
         number: int
         flag: bool = True
 
-    fields = _get_fields(Args)
+    fields = dict(_get_fields(Args))
 
     number_field = fields["number"]
     assert number_field.name == "number"

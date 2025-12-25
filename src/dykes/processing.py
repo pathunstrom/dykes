@@ -67,7 +67,7 @@ def _build_parser(
 
     parser.set_defaults(**{f"cls:{path}": application_definition})
 
-    for fname, field in fields.items():
+    for fname, field in fields:
         # field.type is the rich type of the attribute
         # outer_type is the rich type simplified to a real class
         # inner_type is the innermost type of any collections (ie, the construction type of arguments)
@@ -166,9 +166,9 @@ def _get_default_dataclass(data_class_field: dataclasses.Field):
         return internal.UNSET
 
 
-def _get_dataclass_fields(cls: type) -> set[str] | None:
+def _get_dataclass_fields(cls: type) -> list[str] | None:
     try:
-        return set(f.name for f in dataclasses.fields(cls))
+        return [f.name for f in dataclasses.fields(cls)]
     except TypeError:
         return None
 
@@ -177,7 +177,7 @@ class UsageWarning(RuntimeWarning):
     pass
 
 
-def _get_fields(cls: type) -> dict[str, internal.Field]:
+def _get_fields(cls: type) -> typing.Iterable[tuple[str, internal.Field]]:
     """
     Reads all the data from attributes, annotations, library field objects, etc.
     """
@@ -187,33 +187,35 @@ def _get_fields(cls: type) -> dict[str, internal.Field]:
     full_annos = typing.get_type_hints(cls, include_extras=True)
     if (attrnames := _get_dataclass_fields(cls)) is not None:
         pass
-    if issubclass(cls, tuple):
+    elif issubclass(cls, tuple):
         # Assumed to be NamedTuple
         try:
-            attrnames = set(cls._fields)  # type: ignore
+            attrnames = list(cls._fields)  # type: ignore
         except AttributeError as exc:
             raise TypeError(
                 "Must use typing.NamedTuple or collections.namedtuple. Got {cls!r}"
             ) from exc
     else:
         # Vanilla, read the attributes off the class
-        attrnames = set(
+        attrnames = [
             n
             for c in cls.__mro__
             if c is not tuple
-            for n in vars(c).keys()  # Not dir, only want things defined on this class
+            # Not dir(), only want things defined on this class, in definition order
+            for n in vars(c).keys()
             if not n.startswith("_")
+        ]
+
+        assert not set(full_annos.keys()) - set(attrnames), (
+            "FIXME: Mix in annotations with defined fields"
         )
 
         # Methods are callables without annotations
-        attrnames ^= set(
-            aname
-            for aname in attrnames
-            if callable(getattr(cls, aname)) and aname not in full_annos
-        )
+        for aname in attrnames[:]:
+            if callable(getattr(cls, aname)) and aname not in full_annos:
+                attrnames.remove(aname)
 
-    fields = {}
-    for field_name in attrnames | set(full_annos.keys()):
+    for field_name in attrnames:
         field_default = getattr(cls, field_name, internal.UNSET)
         field_type = simple_annos.get(field_name, object)
         field_anno = full_annos.get(field_name, None)
@@ -250,14 +252,15 @@ def _get_fields(cls: type) -> dict[str, internal.Field]:
                 UsageWarning,
             )
 
-        fields[field_name] = internal.Field(
-            name=field_name,
-            default=field_default,
-            type=field_type,
-            annotations=anno_list,
+        yield (
+            field_name,
+            internal.Field(
+                name=field_name,
+                default=field_default,
+                type=field_type,
+                annotations=anno_list,
+            ),
         )
-
-    return fields
 
 
 def _dict_remove_prefix(prefix: str, dct: dict) -> dict:
