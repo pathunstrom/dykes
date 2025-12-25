@@ -26,6 +26,14 @@ def _strip_decor(t: _Annotation) -> type | typing._SpecialForm:
         case typing.Union:
             # Dubious that we should handle this
             return typing.Union[*map(_strip_decor, args)]
+        # Duplicate typing.Union for types.UnionType; these were different <3.14
+        case types.UnionType if len(args) == 2 and types.NoneType in args:
+            # X|None, semantically the same as Optional
+            args.remove(types.NoneType)
+            return args[0]
+        case types.UnionType:
+            # Dubious that we should handle this
+            return typing.Union[*map(_strip_decor, args)]
         # FIXME: Do more
         case _:
             return t
