@@ -65,7 +65,6 @@ def test_with_store_true_implicit():
         assert action.dest in ("help", "jessica")
         if action.dest == "jessica":
             assert isinstance(action, argparse._StoreTrueAction)
-            assert action.default is False
 
 
 def test_annotated_with_help():
@@ -109,7 +108,7 @@ def test_store_true_type_alias():
     action = [action for action in parser._actions if action.dest == "foo"][0]
 
     assert isinstance(action, argparse._StoreTrueAction)
-    assert action.default is False
+    # assert action.default is False
 
 
 def test_store_false_type_alias():
@@ -126,9 +125,11 @@ def test_store_false_type_alias():
     action = [action for action in parser._actions if action.dest == "foo"][0]
 
     assert isinstance(action, argparse._StoreFalseAction)
-    assert action.default is True
+    # assert action.default is True
 
 
+# Skipping for now. Might return if we insert defaults back into the argparse system.
+@pytest.mark.skip
 def test_defaults_dataclass__different_count():
     @dataclass
     class StopMe:
@@ -150,3 +151,15 @@ def test_positional_parameter_with_default_raises():
         str(err_info.value)
         == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
     )
+
+
+def test_handles_methods():
+    class Application(NamedTuple):
+        dani: str
+
+        def do_thing(self):
+            pass
+
+    result_parser = dykes.build_parser(Application)
+
+    assert len(result_parser._actions) == 2

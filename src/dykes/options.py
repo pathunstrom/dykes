@@ -8,6 +8,16 @@ import dataclasses
 import typing
 from enum import StrEnum, auto
 
+__all__ = [
+    "Action",
+    "Count",
+    "Flags",
+    "NArgs",
+    "StoreTrue",
+    "StoreFalse",
+    "Subparser",
+]
+
 
 class Action(StrEnum):
     """
@@ -51,3 +61,8 @@ class Flags:
 
     def __hash__(self):
         return hash(f"Flags[{','.join(self.value)}]")
+
+
+_SUBPARSER = object()
+
+type Subparser[T] = typing.Annotated[T | None, _SUBPARSER]
