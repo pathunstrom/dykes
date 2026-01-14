@@ -4,17 +4,6 @@ from dykes.processing import _get_fields
 from dykes.internal import UNSET
 
 
-# @pytest.mark.white_box
-# def test_unrecognized_class_raises():
-#     class Args:
-#         field: str
-
-#     with pytest.raises(ValueError) as ex_info:
-#         fields = _get_fields(Args)  # noqa: F841
-
-#     assert str(ex_info.value).startswith("Args is not a supported class type.")
-
-
 @pytest.mark.white_box
 def test_get_fields_from_namedtuple():
     from typing import NamedTuple

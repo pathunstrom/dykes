@@ -128,14 +128,16 @@ def test_store_false_type_alias():
     # assert action.default is True
 
 
-# def test_defaults_dataclass__different_count():
-#     @dataclass
-#     class StopMe:
-#         foo: dykes.Count = 2
+# Skipping for now. Might return if we insert defaults back into the argparse system.
+@pytest.mark.skip
+def test_defaults_dataclass__different_count():
+    @dataclass
+    class StopMe:
+        foo: dykes.Count = 2
 
-#     parser = dykes.build_parser(StopMe)
-#     action = [action for action in parser._actions if action.dest == "foo"][0]
-#     assert action.default == 2
+    parser = dykes.build_parser(StopMe)
+    action = [action for action in parser._actions if action.dest == "foo"][0]
+    assert action.default == 2
 
 
 def test_positional_parameter_with_default_raises():

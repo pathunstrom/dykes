@@ -83,7 +83,7 @@ def _build_parser(
 
         if options._SUBPARSER in field.annotations:
             assert len(field.annotations) == 1, (
-                "Can't mix other annnotations with Subparser"
+                "Can't mix other annotations with Subparser"
             )
             assert outer_type == inner_type
             innercls = inner_type

@@ -15,14 +15,25 @@ def test_hyphenate_long_args():
     assert args.dry_run is True
 
 
-# def test_count_default_to_0():
+def test_count_default_to_0():
+    @dataclasses.dataclass
+    class Application:
+        verbosity: dykes.Count
 
-#     @dataclasses.dataclass
-#     class Application:
-#         verbosity: dykes.Count
+    args = dykes.parse_args(Application, args=[])
+    assert args.verbosity == 0
 
-#     args = dykes.parse_args(Application, args=[])
-#     assert args.verbosity == 0
+
+def test_count_functions():
+    @dataclasses.dataclass
+    class Application:
+        verbosity: dykes.Count
+
+    args = dykes.parse_args(Application, args=["-v"])
+    assert args.verbosity == 1
+
+    args = dykes.parse_args(Application, args=["-vv"])
+    assert args.verbosity == 2
 
 
 def test_positional_parameter_with_default_raises():
