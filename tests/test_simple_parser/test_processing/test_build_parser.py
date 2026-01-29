@@ -1,4 +1,5 @@
 import argparse
+from bdb import bar
 from dataclasses import dataclass
 from typing import NamedTuple, Annotated
 
@@ -144,9 +145,34 @@ def test_positional_parameter_with_default_raises():
     class Application:
         foo: str = "blue"
 
-    with pytest.raises(ValueError) as err_info:
-        parser = dykes.build_parser(Application)  # noqa: F841
+    with pytest.raises(
+        ExceptionGroup, match="Invalid positional arguments"
+    ) as err_info:
+        dykes.build_parser(Application)
+    exceptions = err_info.value.exceptions
+    assert (len(exceptions)) == 1
+    exc = exceptions[0]
     assert (
-        str(err_info.value)
-        == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+        str(exc.args[0])
+        == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'. dest='foo'"
     )
+
+
+def test_multiple_position_with_default_raises_group():
+    @dataclass
+    class Application:
+        boolean: dykes.StoreTrue  # No exception
+        foo: str = bar  # Exception
+        number: int = 7  # Exception
+
+    with pytest.raises(
+        ExceptionGroup, match="Invalid positional arguments"
+    ) as err_info:
+        dykes.build_parser(Application)
+    exceptions = err_info.value.exceptions
+    assert (len(exceptions)) == 2
+    assert all(isinstance(e, ValueError) for e in exceptions)
+    for exc in exceptions:
+        assert str(exc.args[0]).startswith(
+            "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+        )

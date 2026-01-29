@@ -52,6 +52,7 @@ def parse_args[ArgsType](
 
 
 def build_parser(application_definition: type) -> argparse.ArgumentParser:
+    exceptions = []
     description = getdoc(application_definition)
     parser = argparse.ArgumentParser(description=description)
     hints = typing.get_type_hints(application_definition, include_extras=True)
@@ -100,9 +101,12 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         default_set = parameter_options.default is not internal.UNSET
         nargs_not_default_friendly = parameter_options.nargs not in ("?", "*")
         if default_set and flag_unset and nargs_not_default_friendly:
-            raise ValueError(
-                "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+            exceptions.append(
+                ValueError(
+                    f"Positional arguments cannot have defaults without NumberOfArguments '?' or '*'. {dest=}"
+                )
             )
+            continue
         arguments = parameter_options.as_dict()
         dest = arguments["dest"]
         flags = arguments.pop("flags", None)
@@ -110,6 +114,8 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
         if not flags:
             arguments.pop("dest")
         parser.add_argument(*name_or_flags, **arguments)
+    if exceptions:
+        raise ExceptionGroup("Invalid positional arguments", exceptions)
     return parser
 
 
