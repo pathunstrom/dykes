@@ -32,11 +32,16 @@ def test_positional_parameter_with_default_raises():
     class Application:
         ruby: str = "red"
 
-    with pytest.raises(ValueError) as err_info:
-        parser = dykes.parse_args(Application)
+    with pytest.raises(
+        ExceptionGroup, match="Invalid positional arguments"
+    ) as err_info:
+        dykes.parse_args(Application)
+    exceptions = err_info.value.exceptions
+    assert (len(exceptions)) == 1
+    exc = exceptions[0]
     assert (
-        str(err_info.value)
-        == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'."
+        str(exc.args[0])
+        == "Positional arguments cannot have defaults without NumberOfArguments '?' or '*'. dest='ruby'"
     )
 
 
@@ -66,7 +71,7 @@ def test_nargs_positional_implicit_no_param_fails():
         paths: list[Path]
 
     with pytest.raises(SystemExit):
-        args = dykes.parse_args(Application, args=[])
+        dykes.parse_args(Application, args=[])
 
 
 def test_list_with_multiple_types_fails():
