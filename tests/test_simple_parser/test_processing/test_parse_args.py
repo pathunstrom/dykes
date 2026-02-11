@@ -1,7 +1,8 @@
 import dataclasses
 import pathlib
 import typing
-from typing import NamedTuple, Annotated
+from enum import StrEnum, auto
+from typing import NamedTuple, Annotated, Optional
 
 import pytest
 
@@ -199,3 +200,77 @@ def test_example_application(args_list, expected):
     """
     args = dykes.parse_args(ExampleApplication, args=args_list)
     assert args == expected
+
+
+def test_default_values_reported():
+    """
+    https://github.com/pathunstrom/dykes/issues/18
+    """
+
+    @dataclasses.dataclass
+    class Problem:
+        default_list: Annotated[list[str], dykes.options.Flags("-d")] = (
+            dataclasses.field(default_factory=list)
+        )
+        number: Annotated[int, dykes.options.Flags("-n")] = 0
+        words: Annotated[str, dykes.options.Flags("-w")] = ""
+
+    args = dykes.parse_args(Problem, args=[])
+
+    assert args == Problem([])
+
+
+@pytest.mark.xfail(strict=True)
+def test_optional_and_union_none_are_optional_arguments():
+    """
+    https://github.com/pathunstrom/dykes/issues/18#issuecomment-3865641996
+    """
+
+    @dataclasses.dataclass
+    class TestArgs:
+        foo: Optional[str] = None
+
+    dykes.parse_args(TestArgs, args=[])
+
+
+@pytest.mark.xfail(strict=True)
+def test_optional_and_union_none_are_optional_arguments_using_bitwise_or():
+    """
+    https://github.com/pathunstrom/dykes/issues/18#issuecomment-3865641996
+    """
+
+    @dataclasses.dataclass
+    class TestArgs:
+        foo: str | None = None
+
+    dykes.parse_args(TestArgs, args=[])
+
+
+@pytest.mark.xfail(strict=True)
+def test_str_enum_optional():
+    class Values(StrEnum):
+        FIRST = auto()
+        SECOND = auto()
+
+    @dataclasses.dataclass
+    class App:
+        argument: Optional[Values]
+
+    app = dykes.parse_args(App, args=["first"])
+
+    assert app == App(Values.FIRST)
+
+
+@pytest.mark.xfail(strict=True)
+def test_str_enum_optional_bitwise_or():
+    class Values(StrEnum):
+        FIRST = auto()
+        SECOND = auto()
+
+    @dataclasses.dataclass
+    class App:
+        argument: Values | None
+
+    app = dykes.parse_args(App, args=["second"])
+
+    assert app == App(Values.FIRST)
