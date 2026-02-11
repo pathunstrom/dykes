@@ -202,7 +202,6 @@ def test_example_application(args_list, expected):
     assert args == expected
 
 
-@pytest.mark.xfail
 def test_default_values_reported():
     """
     https://github.com/pathunstrom/dykes/issues/18
@@ -221,7 +220,7 @@ def test_default_values_reported():
     assert args == Problem([])
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(strict=True)
 def test_optional_and_union_none_are_optional_arguments():
     """
     https://github.com/pathunstrom/dykes/issues/18#issuecomment-3865641996
@@ -234,7 +233,7 @@ def test_optional_and_union_none_are_optional_arguments():
     dykes.parse_args(TestArgs, args=[])
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(strict=True)
 def test_optional_and_union_none_are_optional_arguments_using_bitwise_or():
     """
     https://github.com/pathunstrom/dykes/issues/18#issuecomment-3865641996
@@ -247,7 +246,7 @@ def test_optional_and_union_none_are_optional_arguments_using_bitwise_or():
     dykes.parse_args(TestArgs, args=[])
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(strict=True)
 def test_str_enum_optional():
     class Values(StrEnum):
         FIRST = auto()
@@ -262,7 +261,7 @@ def test_str_enum_optional():
     assert app == App(Values.FIRST)
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(strict=True)
 def test_str_enum_optional_bitwise_or():
     class Values(StrEnum):
         FIRST = auto()

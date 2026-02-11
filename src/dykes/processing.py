@@ -57,13 +57,13 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=description)
     hints = typing.get_type_hints(application_definition, include_extras=True)
     fields = _get_fields(application_definition)
-
+    print(fields)
     for dest, cls in hints.items():
         origin = utils.get_origin(cls)
         parameter_options: internal.ParameterOptions = internal.ParameterOptions(
             dest=dest,
             type=utils.get_field_type(cls),
-            default=fields[dest].value if fields[dest].value else internal.UNSET,
+            default=fields[dest].value,
         )
 
         parameter_options = utils.get_meta_args(cls, parameter_options)
@@ -126,8 +126,12 @@ class _Field(typing.Protocol):
 
 def _get_default(data_class_field: _Field):
     if data_class_field.default is not dataclasses.MISSING:
+        print(f"{data_class_field.name} has default {data_class_field.default!r}")
         return data_class_field.default
     elif data_class_field.default_factory is not dataclasses.MISSING:
+        print(
+            f"{data_class_field.name} has default_factory {data_class_field.default_factory!r}"
+        )
         return data_class_field.default_factory()
     else:
         return internal.UNSET
@@ -142,7 +146,7 @@ def _get_fields(cls: type) -> dict["str", internal.Field]:
             )
             for field in dataclasses.fields(cls)
         }
-
+        print(fields)
     elif isinstance(cls, internal.NamedTupleProtocol):
         fields = {
             field: internal.Field(field, cls._field_defaults.get(field, internal.UNSET))
