@@ -51,3 +51,6 @@ class Flags:
 
     def __hash__(self):
         return hash(f"Flags[{','.join(self.value)}]")
+
+
+type Options = str | Action | NArgs | Flags

@@ -274,3 +274,17 @@ def test_str_enum_optional_bitwise_or():
     app = dykes.parse_args(App, args=["second"])
 
     assert app == App(Values.FIRST)
+
+
+@pytest.mark.parametrize(
+    ("inputs", "expected"), [([], {"argument": None}), (["foo"], {"argument": "foo"})]
+)
+@pytest.mark.xfail(strict=True)
+def test_explicit_union_with_none(inputs: list[str], expected: dict[str, str]):
+    @dataclasses.dataclass
+    class App:
+        argument: typing.Union[str, None]
+
+    app = dykes.parse_args(App, args=inputs)
+
+    assert app == App(**expected)

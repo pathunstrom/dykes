@@ -20,9 +20,9 @@ UNSET = _Unset()
 
 
 @dataclasses.dataclass
-class Field:
+class Field[T]:
     name: str
-    value: typing.Any
+    value: [T]
 
 
 @typing.runtime_checkable
@@ -31,10 +31,14 @@ class NamedTupleProtocol(typing.Protocol):
     _field_defaults: dict[str, typing.Any]
 
 
+def is_named_tuple(obj: typing.Any) -> typing.TypeGuard[NamedTupleProtocol]:
+    return isinstance(obj, NamedTupleProtocol)
+
+
 @dataclasses.dataclass
 class ParameterOptions[T]:
     dest: str | _Unset
-    type: typing.Type[T] | typing.Callable[[], T] | _Unset
+    type: typing.Type[T] | typing.Callable[[str], T] | _Unset
     flags: list[str] | _Unset = UNSET
     help: str | _Unset = UNSET
     action: options.Action | _Unset = UNSET
