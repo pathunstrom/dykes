@@ -52,5 +52,5 @@ class Flags:
     def __hash__(self):
         return hash(f"Flags[{','.join(self.value)}]")
 
-
-type Options = str | Action | NArgs | Flags
+    def __eq__(self, other):
+        return self.value == other.value and type(other) is Flags

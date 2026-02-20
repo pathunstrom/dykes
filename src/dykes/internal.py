@@ -22,7 +22,7 @@ UNSET = _Unset()
 @dataclasses.dataclass
 class Field[T]:
     name: str
-    value: [T]
+    value: T
 
 
 @typing.runtime_checkable
@@ -38,7 +38,7 @@ def is_named_tuple(obj: typing.Any) -> typing.TypeGuard[NamedTupleProtocol]:
 @dataclasses.dataclass
 class ParameterOptions[T]:
     dest: str | _Unset
-    type: typing.Type[T] | typing.Callable[[str], T] | _Unset
+    type: type[T] | typing.Callable[[str], T] | _Unset
     flags: list[str] | _Unset = UNSET
     help: str | _Unset = UNSET
     action: options.Action | _Unset = UNSET

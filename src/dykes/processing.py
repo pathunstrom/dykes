@@ -20,6 +20,16 @@ MUST_BE_FLAG = (
     options.Action.STORE_FALSE,
 )
 
+SET_FLAG_DEFAULT = (
+    options.Action.COUNT,
+    options.Action.STORE_TRUE,
+    options.Action.STORE_FALSE,
+    options.Action.STORE,
+    options.Action.APPEND,
+)
+
+dev_mode = False
+
 
 def parse_args[ArgsType](
     application_struct: type[ArgsType],
@@ -62,6 +72,9 @@ def parse_args[ArgsType](
 
     Some error messages will change in development mode.
     """
+    if development_mode:
+        global dev_mode
+        dev_mode = True
     if args is None:
         args = argv[1:]
     parser = build_parser(application_struct)
@@ -180,21 +193,6 @@ class FieldDefinition[T]:
     )  # A default value. If there is a factory, an instance of the return.
 
 
-def is_optional(type_def: type) -> bool:
-    """
-    Checks if type is Optional or a Union against None.
-    """
-    origin = typing.get_origin(type_def)
-    args = typing.get_args(type_def)
-    if origin == typing.Annotated:
-        annotated = typing.get_args(type_def)[0]
-        origin = typing.get_origin(annotated)
-        args = typing.get_args(annotated)
-    if origin == typing.Union or origin == types.UnionType:
-        return len(args) == 2 and type(None) in args
-    return False
-
-
 def _get_definitions_dataclass(
     struct: typing.Any,
 ) -> list[FieldDefinition] | type[NotImplemented]:
@@ -265,7 +263,7 @@ def get_field_definitions(app_definition: typing.Any) -> list[FieldDefinition]:
             maybe_definitions = _get_definitions(app_definition)
             if maybe_definitions is NotImplemented:
                 continue
-            return maybe_definitions
+            return typing.cast(list[FieldDefinition], maybe_definitions)
         except Exception as err:
             errors.append(err)
     if errors:
@@ -275,3 +273,143 @@ def get_field_definitions(app_definition: typing.Any) -> list[FieldDefinition]:
     raise ValueError(
         "Struct type not supported. Consider using typing.NamedTuple or dataclasses.dataclass."
     )
+
+
+class TypeMeta(typing.NamedTuple):
+    real_type: type
+    is_optional: bool
+    is_list: bool
+    options: dict[type, typing.Any]
+
+
+def get_metadata(type_def: type, field_name: str) -> TypeMeta:
+    real_type = type_def
+    is_optional = False
+    is_list = False
+    parse_options = {}
+
+    # Unroll Annotated
+    origin = typing.get_origin(real_type)
+    if origin == typing.Annotated:
+        args = typing.get_args(real_type)
+        real_type = args[0]
+        for annotation in args[1:]:
+            key = type(annotation)
+            if key in parse_options:
+                raise ValueError(
+                    f"Found duplicate annotated options. Check {field_name} for duplicated options."
+                )
+            parse_options[key] = annotation
+
+    # Unroll Optional
+    origin = typing.get_origin(real_type)
+    if origin == types.UnionType or origin == typing.Union:
+        args = typing.get_args(real_type)
+        if len(args) != 2 or types.NoneType not in args:
+            raise ValueError(
+                f"Dykes argument parsing cannot support complex unions. Check {field_name}'s type hint."
+            )
+        else:
+            stripped_none = list(args)
+            stripped_none.remove(types.NoneType)
+            real_type = stripped_none[0]
+            is_optional = True
+
+    # Unroll collections
+    origin = typing.get_origin(real_type)
+    if origin in (dict, set, tuple):
+        raise ValueError(
+            f"Dykes argument parsing does not support {origin.__name__}. Check {field_name}'s type hint."
+        )
+    elif origin is list:
+        args = typing.get_args(real_type)
+        real_type = args[0]
+        is_list = True
+
+    # Special cases
+    if real_type in (dict, set, tuple):
+        raise ValueError(
+            f"Dykes argument parsing does not support {real_type.__name__}. Check {field_name}'s type hint."
+        )
+    elif real_type is list:
+        real_type = str
+        is_list = True
+
+    return TypeMeta(
+        real_type,
+        is_optional,
+        is_list,
+        parse_options,
+    )
+
+
+def generate_parameter_definitions(
+    field_definitions: list[FieldDefinition],
+) -> list[internal.ParameterOptions]:
+    exceptions = []
+    parameters_options = []
+
+    for field_definition in field_definitions:
+        param_dest = field_definition.name
+
+        # Handle type
+        try:
+            param_type, is_optional, is_list, annotations_dict = get_metadata(
+                field_definition.type_def, param_dest
+            )
+        except Exception as err:
+            exceptions.append(err)
+            continue
+        # Handle action
+        param_action: options.Action | internal._Unset = internal.UNSET
+
+        if is_list:
+            param_action = options.Action.APPEND
+
+        # Handle flags
+        param_flags: list[str] | internal._Unset = internal.UNSET
+        if param_action in SET_FLAG_DEFAULT or is_optional:
+            param_flags = [f"-{param_dest[0]}", f"--{param_dest.replace('_', '-')}"]
+
+        declared_flags: options.Flags | None = annotations_dict.get(options.Flags, None)
+        if declared_flags is not None:
+            param_flags = declared_flags.value
+
+        # Handle help
+        param_help: str | internal._Unset = internal.UNSET
+        declared_help: str | None = annotations_dict.get(str, None)
+        if declared_help is not None:
+            param_help = declared_help
+
+        # Handle default
+        param_default: typing.Any = internal.UNSET
+        if is_optional:
+            param_default = None
+        elif is_list:
+            param_default = []
+
+        # Handle nargs
+        param_nargs: int | typing.Literal["*", "?", "+"] | internal._Unset = (
+            internal.UNSET
+        )
+        if is_optional:
+            param_nargs = "?"
+        elif is_list:
+            param_nargs = "*"
+
+        parameters_options.append(
+            internal.ParameterOptions(
+                dest=param_dest,
+                type=param_type,
+                flags=param_flags,
+                help=param_help,
+                action=param_action,
+                default=param_default,
+                nargs=param_nargs,
+            )
+        )
+    if exceptions:
+        raise ExceptionGroup(
+            "Could not generate parameters. See included exceptions.", exceptions
+        )
+    return parameters_options

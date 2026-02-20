@@ -7,10 +7,13 @@ Classes need to be defined ahead of time to be used in parameterize,
 planning to build multiple test cases.
 """
 
+import typing
+
 import pytest
 from dataclasses import dataclass
 from typing import NamedTuple
 
+import dykes.options
 from dykes.internal import UNSET
 from dykes.processing import get_field_definitions, FieldDefinition
 
@@ -24,6 +27,11 @@ class NamedTupleSimpleNoDefaults(NamedTuple):
 class DataclassSimpleNoDefaults:
     field: str
     another: int
+
+
+@dataclass
+class DataclassAnnotated:
+    field: typing.Annotated[int, dykes.options.Flags("-g", "--generate")]
 
 
 @pytest.mark.parametrize(
@@ -41,6 +49,16 @@ class DataclassSimpleNoDefaults:
             [
                 FieldDefinition("field", str, UNSET),
                 FieldDefinition("another", int, UNSET),
+            ],
+        ),
+        (
+            DataclassAnnotated,
+            [
+                FieldDefinition(
+                    "field",
+                    typing.Annotated[int, dykes.options.Flags("-g", "--generate")],
+                    UNSET,
+                )
             ],
         ),
     ],
