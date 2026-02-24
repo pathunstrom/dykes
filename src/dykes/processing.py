@@ -376,6 +376,8 @@ def generate_parameter_definitions(
 
         if is_list:
             param_action = options.Action.APPEND
+        elif param_type is bool:
+            param_action = options.Action.STORE_TRUE
 
         # Handle flags
         param_flags: list[str] | internal._Unset = internal.UNSET
