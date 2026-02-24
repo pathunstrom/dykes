@@ -62,7 +62,7 @@ def parse_args[ArgsType](
 
     Example:
 
-        args = parse_args(Application, args=["some", "arguments"]
+        args = parse_args(Application, args=["some", "arguments"])
 
     Activate development mode with `development_mode=True`:
 
