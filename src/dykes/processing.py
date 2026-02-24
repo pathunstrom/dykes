@@ -213,12 +213,23 @@ def _get_definitions_dataclass(
         else:
             return internal.UNSET
 
-    return [
-        FieldDefinition(
-            name=field.name, type_def=field.type, default_value=get_default(field)
+    rv: list[FieldDefinition] = []
+    type_hints = typing.get_type_hints(struct, include_extras=True)
+    # dataclasses.fields doesn't reify type hints, the rest of the system
+    # expects a reified type. We're going to stitch together
+    # typing.get_type_hints with fields. Which is painful to make work in a
+    # list comprehension, so we're just for looping.
+
+    for field in dataclasses.fields(struct):
+        name = field.name
+        reified_type = type_hints[name]
+        default_value = get_default(field)
+        rv.append(
+            FieldDefinition(
+                name=name, type_def=reified_type, default_value=default_value
+            )
         )
-        for field in dataclasses.fields(struct)
-    ]
+    return rv
 
 
 def _get_definitions_named_tuple(
@@ -347,7 +358,7 @@ def generate_parameter_definitions(
     field_definitions: list[FieldDefinition],
 ) -> list[internal.ParameterOptions]:
     exceptions = []
-    parameters_options = []
+    parameters_options: list[internal.ParameterOptions] = []
 
     for field_definition in field_definitions:
         param_dest = field_definition.name
