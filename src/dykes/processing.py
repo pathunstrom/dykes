@@ -376,6 +376,8 @@ def generate_parameter_definitions(
 
         if is_list:
             param_action = options.Action.APPEND
+        elif param_type is bool and field_definition.default_value is True:
+            param_action = options.Action.STORE_FALSE
         elif param_type is bool:
             param_action = options.Action.STORE_TRUE
 
@@ -400,6 +402,9 @@ def generate_parameter_definitions(
             param_default = None
         elif is_list:
             param_default = []
+
+        if field_definition.default_value is not internal.UNSET:
+            param_default = field_definition.default_value
 
         # Handle nargs
         param_nargs: int | typing.Literal["*", "?", "+"] | internal._Unset = (

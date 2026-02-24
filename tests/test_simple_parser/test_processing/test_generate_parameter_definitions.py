@@ -122,6 +122,24 @@ from dykes.processing import FieldDefinition, generate_parameter_definitions
                 )
             ],
         ),
+        (
+            [
+                FieldDefinition(
+                    "boolean",
+                    bool,
+                    True,
+                )
+            ],
+            [
+                ParameterOptions(
+                    dest="boolean",
+                    type=bool,
+                    flags=["-b", "--boolean"],
+                    action=dykes.Action.STORE_FALSE,
+                    default=True,
+                )
+            ],
+        ),
     ],
 )
 def test_generate_parameter_definition(
