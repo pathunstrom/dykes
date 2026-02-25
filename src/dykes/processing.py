@@ -11,7 +11,7 @@ import typing
 from inspect import getdoc
 from sys import argv
 
-from . import options, internal, utils
+from . import options, internal
 
 NO_TYPE = options.Action.COUNT, options.Action.STORE_FALSE, options.Action.STORE_TRUE
 MUST_BE_FLAG = (
@@ -25,8 +25,8 @@ SET_FLAG_DEFAULT = (
     options.Action.STORE_TRUE,
     options.Action.STORE_FALSE,
     options.Action.STORE,
-    options.Action.APPEND,
 )
+
 
 dev_mode = False
 
@@ -86,63 +86,31 @@ def build_parser(application_definition: type) -> argparse.ArgumentParser:
     exceptions = []
     description = getdoc(application_definition)
     parser = argparse.ArgumentParser(description=description)
-    hints = typing.get_type_hints(application_definition, include_extras=True)
-    fields = _get_fields(application_definition)
-    for dest, cls in hints.items():
-        origin = utils.get_origin(cls)
-        parameter_options: internal.ParameterOptions = internal.ParameterOptions(
-            dest=dest,
-            type=utils.get_field_type(cls),
-            default=fields[dest].value,
-        )
-
-        parameter_options = utils.get_meta_args(cls, parameter_options)
-
-        if parameter_options.action is internal.UNSET:
-            if parameter_options.type is bool:
-                if parameter_options.default is True:
-                    parameter_options.action = options.Action.STORE_FALSE
-                elif parameter_options.default in (False, internal.UNSET):
-                    parameter_options.action = options.Action.STORE_TRUE
-
-        if parameter_options.action in NO_TYPE:
-            parameter_options.type = internal.UNSET
-
-        store_flag_unset = (
-            parameter_options.action is options.Action.STORE
-            and parameter_options.flags is internal.UNSET
-        )
-        # If explicit Store action, we assume it's a flag.
-        must_be_flag_unset = (
-            parameter_options.action in MUST_BE_FLAG and not parameter_options.flags
-        )
-        if store_flag_unset or must_be_flag_unset:
-            parameter_options.flags = [f"-{dest[0]}", f"--{dest.replace('_', '-')}"]
-
-        if parameter_options.action is options.Action.COUNT:
-            parameter_options.default = (
-                parameter_options.default if parameter_options.default else 0
-            )
-
-        if origin is list and parameter_options.nargs is internal.UNSET:
-            parameter_options.nargs = "+"
-
-        flag_unset = parameter_options.flags is internal.UNSET
-        default_set = parameter_options.default is not internal.UNSET
-        nargs_not_default_friendly = parameter_options.nargs not in ("?", "*")
+    fields = get_field_definitions(application_definition)
+    parameters = generate_parameter_definitions(fields)
+    for parameter in parameters:
+        flag_unset = parameter.flags is internal.UNSET
+        default_set = parameter.default is not internal.UNSET
+        nargs_not_default_friendly = parameter.nargs not in ("?", "*")
         if default_set and flag_unset and nargs_not_default_friendly:
             exceptions.append(
                 ValueError(
-                    f"Positional arguments cannot have defaults without NumberOfArguments '?' or '*'. {dest=}"
+                    f"Positional arguments cannot have defaults without NumberOfArguments '?' or '*'. dest={parameter.dest!r}"
                 )
             )
             continue
-        arguments = parameter_options.as_dict()
+
+        arguments = parameter.as_dict()
+
+        if parameter.action in NO_TYPE:
+            arguments.pop("type")
+
         dest = arguments["dest"]
         flags = arguments.pop("flags", None)
         name_or_flags = flags if flags else [dest]
         if not flags:
             arguments.pop("dest")
+
         parser.add_argument(*name_or_flags, **arguments)
     if exceptions:
         raise ExceptionGroup("Invalid positional arguments", exceptions)
@@ -330,10 +298,14 @@ def get_metadata(type_def: type, field_name: str) -> TypeMeta:
     origin = typing.get_origin(real_type)
     if origin in (dict, set, tuple):
         raise ValueError(
-            f"Dykes argument parsing does not support {origin.__name__}. Check {field_name}'s type hint."
+            f"Argument parsing does not support {origin.__name__}. Check {field_name}'s type hint. Consider using `list`"
         )
     elif origin is list:
         args = typing.get_args(real_type)
+        if len(args) > 1:
+            raise ValueError(
+                f"Argument parsing does not support lists with multiple types. Check {field_name}'s type hint. Limit your list to a single type."
+            )
         real_type = args[0]
         is_list = True
 
@@ -357,6 +329,18 @@ def get_metadata(type_def: type, field_name: str) -> TypeMeta:
 def generate_parameter_definitions(
     field_definitions: list[FieldDefinition],
 ) -> list[internal.ParameterOptions]:
+    """
+    Turn an iterable of `FieldDefinitions` into a list of `ParameterOptions`
+
+    This function is gnarly and is basically _the place_ we catch all the weird
+    edge cases we care about. Things like what to do if the user declares a bool
+    or list.
+
+    Organized into sections (look for comments) based on the order of the
+    parameters to ParameterOptions. Don't worry if incompatible fields for an
+    action are set. Handling the API barrier between ParameterOptions and
+    argparse live in the `build_parser` function.
+    """
     exceptions = []
     parameters_options: list[internal.ParameterOptions] = []
 
@@ -375,11 +359,13 @@ def generate_parameter_definitions(
         param_action: options.Action | internal._Unset = internal.UNSET
 
         if is_list:
-            param_action = options.Action.APPEND
+            param_action = options.Action.EXTEND
         elif param_type is bool and field_definition.default_value is True:
             param_action = options.Action.STORE_FALSE
         elif param_type is bool:
             param_action = options.Action.STORE_TRUE
+
+        param_action = annotations_dict.get(options.Action, param_action)
 
         # Handle flags
         param_flags: list[str] | internal._Unset = internal.UNSET
@@ -400,8 +386,8 @@ def generate_parameter_definitions(
         param_default: typing.Any = internal.UNSET
         if is_optional:
             param_default = None
-        elif is_list:
-            param_default = []
+        elif param_action is options.Action.COUNT:
+            param_default = 0
 
         if field_definition.default_value is not internal.UNSET:
             param_default = field_definition.default_value
@@ -414,6 +400,11 @@ def generate_parameter_definitions(
             param_nargs = "?"
         elif is_list:
             param_nargs = "*"
+        declared_nargs: options.NArgs = annotations_dict.get(
+            options.NArgs, internal.UNSET
+        )
+        if declared_nargs is not internal.UNSET:
+            param_nargs = declared_nargs.value
 
         parameters_options.append(
             internal.ParameterOptions(
