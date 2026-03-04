@@ -51,3 +51,6 @@ class Flags:
 
     def __hash__(self):
         return hash(f"Flags[{','.join(self.value)}]")
+
+    def __eq__(self, other):
+        return self.value == other.value and type(other) is Flags

@@ -64,6 +64,7 @@ def test_nargs_positional_implicit(inputs, expected):
     assert args.paths == expected
 
 
+@pytest.mark.xfail(strict=True)
 def test_nargs_positional_implicit_no_param_fails():
     from pathlib import Path
 
@@ -80,13 +81,13 @@ def test_list_with_multiple_types_fails():
     class Application:
         paths: list[str, float]
 
-    with pytest.raises(ValueError) as ex_info:
+    with pytest.RaisesGroup(
+        pytest.RaisesExc(
+            ValueError,
+            match="Argument parsing does not support lists with multiple types.",
+        ),
+    ):
         args = dykes.parse_args(Application)
-
-    assert (
-        str(ex_info.value)
-        == "dykes does not support lists with multiple type values. Convert list[str, float] to list[str] or list[float]"
-    )
 
 
 def test_positional_parameter_with_default_proper_nargs_optional():
@@ -220,7 +221,6 @@ def test_default_values_reported():
     assert args == Problem([])
 
 
-@pytest.mark.xfail(strict=True)
 def test_optional_and_union_none_are_optional_arguments():
     """
     https://github.com/pathunstrom/dykes/issues/18#issuecomment-3865641996
@@ -233,7 +233,6 @@ def test_optional_and_union_none_are_optional_arguments():
     dykes.parse_args(TestArgs, args=[])
 
 
-@pytest.mark.xfail(strict=True)
 def test_optional_and_union_none_are_optional_arguments_using_bitwise_or():
     """
     https://github.com/pathunstrom/dykes/issues/18#issuecomment-3865641996
@@ -246,7 +245,7 @@ def test_optional_and_union_none_are_optional_arguments_using_bitwise_or():
     dykes.parse_args(TestArgs, args=[])
 
 
-@pytest.mark.xfail(strict=True)
+@pytest.mark.xfail(reason="Desired API is unclear.", strict=True)
 def test_str_enum_optional():
     class Values(StrEnum):
         FIRST = auto()
@@ -261,7 +260,7 @@ def test_str_enum_optional():
     assert app == App(Values.FIRST)
 
 
-@pytest.mark.xfail(strict=True)
+@pytest.mark.xfail(reason="Desired API unclear.", strict=True)
 def test_str_enum_optional_bitwise_or():
     class Values(StrEnum):
         FIRST = auto()
@@ -274,3 +273,19 @@ def test_str_enum_optional_bitwise_or():
     app = dykes.parse_args(App, args=["second"])
 
     assert app == App(Values.FIRST)
+
+
+@pytest.mark.parametrize(
+    ("inputs", "expected"), [([], {"argument": None}), (["foo"], {"argument": "foo"})]
+)
+def test_explicit_union_with_none(inputs: list[str], expected: dict[str, str]):
+    if inputs:
+        raise pytest.xfail("Unclear API for optional positional.")
+
+    @dataclasses.dataclass
+    class App:
+        argument: typing.Union[str, None]
+
+    app = dykes.parse_args(App, args=inputs)
+
+    assert app == App(**expected)

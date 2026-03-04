@@ -4,25 +4,31 @@ import typing
 from . import options
 
 
-class _Unset:
-    _instance = None
+class Sentinel:
+    _instance: typing.ClassVar[typing.Self | None] = None
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __bool__(self):
-        return False
+
+class UnsetType(Sentinel):
+    pass
 
 
-UNSET = _Unset()
+class UnsupportedType(Sentinel):
+    pass
+
+
+UNSET = UnsetType()
+UNSUPPORTED = UnsupportedType()
 
 
 @dataclasses.dataclass
-class Field:
+class Field[T]:
     name: str
-    value: typing.Any
+    value: T
 
 
 @typing.runtime_checkable
@@ -31,15 +37,19 @@ class NamedTupleProtocol(typing.Protocol):
     _field_defaults: dict[str, typing.Any]
 
 
+def is_named_tuple(obj: typing.Any) -> typing.TypeGuard[NamedTupleProtocol]:
+    return isinstance(obj, NamedTupleProtocol)
+
+
 @dataclasses.dataclass
 class ParameterOptions[T]:
-    dest: str | _Unset
-    type: typing.Type[T] | typing.Callable[[], T] | _Unset
-    flags: list[str] | _Unset = UNSET
-    help: str | _Unset = UNSET
-    action: options.Action | _Unset = UNSET
-    default: T | _Unset = UNSET
-    nargs: int | typing.Literal["?", "+", "*"] | _Unset = UNSET
+    dest: str | UnsetType
+    type: type[T] | typing.Callable[[str], T] | UnsetType
+    flags: list[str] | UnsetType = UNSET
+    help: str | UnsetType = UNSET
+    action: options.Action | UnsetType = UNSET
+    default: T | UnsetType = UNSET
+    nargs: int | typing.Literal["?", "+", "*"] | UnsetType = UNSET
 
     def as_dict(self) -> dict[str, typing.Any]:
         output = {
