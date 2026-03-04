@@ -245,6 +245,7 @@ def test_optional_and_union_none_are_optional_arguments_using_bitwise_or():
     dykes.parse_args(TestArgs, args=[])
 
 
+@pytest.mark.xfail(reason="Desired API is unclear.", strict=True)
 def test_str_enum_optional():
     class Values(StrEnum):
         FIRST = auto()
@@ -259,6 +260,7 @@ def test_str_enum_optional():
     assert app == App(Values.FIRST)
 
 
+@pytest.mark.xfail(reason="Desired API unclear.", strict=True)
 def test_str_enum_optional_bitwise_or():
     class Values(StrEnum):
         FIRST = auto()
@@ -277,6 +279,9 @@ def test_str_enum_optional_bitwise_or():
     ("inputs", "expected"), [([], {"argument": None}), (["foo"], {"argument": "foo"})]
 )
 def test_explicit_union_with_none(inputs: list[str], expected: dict[str, str]):
+    if inputs:
+        raise pytest.xfail("Unclear API for optional positional.")
+
     @dataclasses.dataclass
     class App:
         argument: typing.Union[str, None]

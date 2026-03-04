@@ -68,7 +68,6 @@ from dykes.processing import FieldDefinition, generate_parameter_definitions
                     nargs="*",
                     flags=UNSET,
                     default=UNSET,
-                    action=dykes.Action.EXTEND,
                 )
             ],
         ),
@@ -81,7 +80,6 @@ from dykes.processing import FieldDefinition, generate_parameter_definitions
                     type=str,
                     nargs="*",
                     default=UNSET,
-                    action=dykes.Action.EXTEND,
                 )
             ],
         ),

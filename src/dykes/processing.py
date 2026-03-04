@@ -157,13 +157,13 @@ class FieldDefinition[T]:
     name: str  # Destination
     type_def: type[T]  # The type hint of the field.
     default_value: (
-        T | internal._Unset
+        T | internal.UnsetType
     )  # A default value. If there is a factory, an instance of the return.
 
 
 def _get_definitions_dataclass(
     struct: typing.Any,
-) -> list[FieldDefinition] | type[NotImplemented]:
+) -> list[FieldDefinition] | internal.UnsupportedType:
     """
     Generate field definitions if the struct is a dataclass.
 
@@ -171,9 +171,9 @@ def _get_definitions_dataclass(
     """
 
     if not dataclasses.is_dataclass(struct):
-        return NotImplemented
+        return internal.UNSUPPORTED
 
-    def get_default(field: dataclasses.Field) -> typing.Any | internal._Unset:
+    def get_default(field: dataclasses.Field) -> typing.Any | internal.UnsetType:
         if field.default is not dataclasses.MISSING:
             return field.default
         elif field.default_factory is not dataclasses.MISSING:
@@ -202,7 +202,7 @@ def _get_definitions_dataclass(
 
 def _get_definitions_named_tuple(
     struct: typing.Any,
-) -> list[FieldDefinition] | type[NotImplemented]:
+) -> list[FieldDefinition] | internal.UnsupportedType:
     """
     Generate field definitions if the struct looks like a NamedTuple.
 
@@ -214,7 +214,7 @@ def _get_definitions_named_tuple(
     """
 
     if not internal.is_named_tuple(struct):
-        return NotImplemented
+        return internal.UNSUPPORTED
 
     defaults = struct._field_defaults
     hints = typing.get_type_hints(struct, include_extras=True)
@@ -240,7 +240,7 @@ def get_field_definitions(app_definition: typing.Any) -> list[FieldDefinition]:
     for _get_definitions in _get_definitions_list:
         try:
             maybe_definitions = _get_definitions(app_definition)
-            if maybe_definitions is NotImplemented:
+            if maybe_definitions is internal.UNSUPPORTED:
                 continue
             return typing.cast(list[FieldDefinition], maybe_definitions)
         except Exception as err:
@@ -356,11 +356,9 @@ def generate_parameter_definitions(
             exceptions.append(err)
             continue
         # Handle action
-        param_action: options.Action | internal._Unset = internal.UNSET
+        param_action: options.Action | internal.UnsetType = internal.UNSET
 
-        if is_list:
-            param_action = options.Action.EXTEND
-        elif param_type is bool and field_definition.default_value is True:
+        if param_type is bool and field_definition.default_value is True:
             param_action = options.Action.STORE_FALSE
         elif param_type is bool:
             param_action = options.Action.STORE_TRUE
@@ -368,7 +366,7 @@ def generate_parameter_definitions(
         param_action = annotations_dict.get(options.Action, param_action)
 
         # Handle flags
-        param_flags: list[str] | internal._Unset = internal.UNSET
+        param_flags: list[str] | internal.UnsetType = internal.UNSET
         if param_action in SET_FLAG_DEFAULT or is_optional:
             param_flags = [f"-{param_dest[0]}", f"--{param_dest.replace('_', '-')}"]
 
@@ -377,7 +375,7 @@ def generate_parameter_definitions(
             param_flags = declared_flags.value
 
         # Handle help
-        param_help: str | internal._Unset = internal.UNSET
+        param_help: str | internal.UnsetType = internal.UNSET
         declared_help: str | None = annotations_dict.get(str, None)
         if declared_help is not None:
             param_help = declared_help
@@ -393,7 +391,7 @@ def generate_parameter_definitions(
             param_default = field_definition.default_value
 
         # Handle nargs
-        param_nargs: int | typing.Literal["*", "?", "+"] | internal._Unset = (
+        param_nargs: int | typing.Literal["*", "?", "+"] | internal.UnsetType = (
             internal.UNSET
         )
         if is_optional:
