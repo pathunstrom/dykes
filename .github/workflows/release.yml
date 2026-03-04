@@ -65,7 +65,7 @@ jobs:
 
   publish-py-pi-test:
     name: Publish dykes to Test PyPI
-    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'release' && (github.event.action == 'released' || github.event.action == 'prereleased'))) }}
     needs:
       - build
     runs-on: ubuntu-latest
