@@ -7,4 +7,6 @@ jobs:
     uses: ./.github/workflows/test-and-lint.yml
 
   build:
+    needs:
+      - test-and-lint
     uses: ./.github/workflows/build.yml
