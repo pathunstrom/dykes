@@ -1,0 +1,39 @@
+name: Upload to TestPyPI on push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-lint:
+    uses: ./.github/workflows/test-and-lint.yml
+
+  build:
+    uses: ./.github/workflows/build.yml
+
+  publish-py-pi-test:
+    name: Publish dykes to Test PyPI
+    needs:
+      - build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/dykes
+
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+      - name: Publish dykes to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+          skip-existing: true
+          repository-url: https://test.pypi.org/legacy/

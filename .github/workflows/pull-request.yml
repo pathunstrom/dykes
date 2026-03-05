@@ -1,0 +1,10 @@
+name: Run test, lint, and build on PR
+
+on: pull_request
+
+jobs:
+  test-and-lint:
+    uses: ./.github/workflows/test-and-lint.yml
+
+  build:
+    uses: ./.github/workflows/build.yml
