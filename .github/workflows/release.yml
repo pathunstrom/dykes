@@ -5,7 +5,9 @@ name: Upload to TestPyPI on release.
 
 on:
   release:
-    types: ["published"]
+    types:
+      - released
+      - prereleased
 
 jobs:
   test-and-lint:
@@ -17,8 +19,6 @@ jobs:
     uses: ./.github/workflows/build.yml
 
   publish-py-pi-test:
-    name: Publish dykes to Test PyPI
-    if: ${{ github.event.action == 'released' || github.event.action == 'prereleased' }}
     needs:
       - build
     runs-on: ubuntu-latest
@@ -45,7 +45,6 @@ jobs:
 
   publish-py-pi:
     name: Publish dykes to PyPI
-    if: ${{ github.event.action == 'released' || github.event.action == 'prereleased' }}
     needs:
     - publish-py-pi-test
     runs-on: ubuntu-latest
