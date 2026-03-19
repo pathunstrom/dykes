@@ -1,5 +1,5 @@
 from .processing import parse_args, build_parser
-from .options import Action, Count, StoreFalse, StoreTrue
+from .options import Action, Count, Flags, NArgs, StoreFalse, StoreTrue
 
 __all__ = [
     "options",
@@ -7,6 +7,8 @@ __all__ = [
     "build_parser",
     "Action",
     "Count",
+    "Flags",
+    "NArgs",
     "StoreFalse",
     "StoreTrue",
 ]
