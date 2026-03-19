@@ -19,10 +19,14 @@ version = "0.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.0"
-sphinx = "^8.2.3"
 ruff = "^0.11.12"
 mypy = "^1.16.0"
 pre-commit = "^4.2.0"
+
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^9.1.0"
+furo = "^2025.12.19"
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
