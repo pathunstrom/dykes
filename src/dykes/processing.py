@@ -9,7 +9,7 @@ import dataclasses
 import types
 import typing
 from inspect import getdoc
-from sys import argv
+import sys
 
 from . import options, internal
 
@@ -76,7 +76,7 @@ def parse_args[ArgsType](
         global dev_mode
         dev_mode = True
     if args is None:
-        args = argv[1:]
+        args = sys.argv[1:]
     parser = build_parser(application_struct)
     parsed = parser.parse_args(args)
     return application_struct(**vars(parsed))
