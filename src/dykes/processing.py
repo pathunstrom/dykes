@@ -44,6 +44,8 @@ def parse_args[ArgsType](
 
     Sample use:
 
+    .. code:: python
+
         from dataclasses import dataclass
         from pathlib import Path
 
@@ -62,11 +64,15 @@ def parse_args[ArgsType](
 
     Example:
 
-        args = parse_args(Application, args=["some", "arguments"])
+    .. code:: python
+
+       args = parse_args(Application, args=["some", "arguments"])
 
     Activate development mode with `development_mode=True`:
 
     Example:
+
+    .. code:: python
 
         args = parse_args(Application, development_mode=True)
 
@@ -332,7 +338,7 @@ def generate_parameter_definitions(
     """
     Turn an iterable of `FieldDefinitions` into a list of `ParameterOptions`
 
-    This function is gnarly and is basically _the place_ we catch all the weird
+    This function is gnarly and is basically *the place* we catch all the weird
     edge cases we care about. Things like what to do if the user declares a bool
     or list.
 
