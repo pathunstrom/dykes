@@ -36,6 +36,7 @@ def parse_args[ArgsType](
     *,
     args: list | None = None,
     development_mode: bool = False,
+    prog: str | None = None,
 ) -> ArgsType:
     """
     Process arguments and conform them to an input type.
@@ -83,15 +84,17 @@ def parse_args[ArgsType](
         dev_mode = True
     if args is None:
         args = sys.argv[1:]
-    parser = build_parser(application_struct)
+    parser = build_parser(application_struct, prog)
     parsed = parser.parse_args(args)
     return application_struct(**vars(parsed))
 
 
-def build_parser(application_definition: type) -> argparse.ArgumentParser:
+def build_parser(
+    application_definition: type, prog: str | None = None
+) -> argparse.ArgumentParser:
     exceptions = []
     description = getdoc(application_definition)
-    parser = argparse.ArgumentParser(description=description)
+    parser = argparse.ArgumentParser(description=description, prog=prog)
     fields = get_field_definitions(application_definition)
     parameters = generate_parameter_definitions(fields)
     for parameter in parameters:

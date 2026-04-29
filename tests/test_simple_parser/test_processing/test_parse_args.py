@@ -289,3 +289,15 @@ def test_explicit_union_with_none(inputs: list[str], expected: dict[str, str]):
     app = dykes.parse_args(App, args=inputs)
 
     assert app == App(**expected)
+
+
+def test_error_message_incldues_prog(capsys):
+    @dataclasses.dataclass
+    class Application:
+        argument: str
+
+    with pytest.raises(SystemExit):
+        dykes.parse_args(Application, args=[], prog="some_program_name")
+
+    captured = capsys.readouterr()
+    assert "some_program_name" in captured.err
