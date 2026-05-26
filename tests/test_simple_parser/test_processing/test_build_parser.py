@@ -1,5 +1,4 @@
 import argparse
-from bdb import bar
 from dataclasses import dataclass
 from typing import NamedTuple, Annotated
 
@@ -162,7 +161,7 @@ def test_multiple_position_with_default_raises_group():
     @dataclass
     class Application:
         boolean: dykes.StoreTrue  # No exception
-        foo: str = bar  # Exception
+        foo: str = "bar"  # Exception
         number: int = 7  # Exception
 
     with pytest.raises(
